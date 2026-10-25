@@ -400,3 +400,59 @@ test("@supabase before and after photos are private to the student and trainer",
   await expect(page.getByRole("button", { name: "Adicionar foto" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Excluir foto/ })).toHaveCount(0);
 });
+
+test("@supabase trainer prescribes cardio and the student records it", async ({ browser, page }) => {
+  await login(page, trainer.email, trainer.password);
+  await page.goto(planUrl);
+  const session = page.getByRole("region", { name: "Treino A" });
+
+  await session.getByRole("button", { name: "Adicionar cardio" }).click();
+  await session.getByLabel("Atividade de cardio").selectOption({ label: "Esteira" });
+  await session.getByLabel("Duração (min)").fill("20");
+  await session.getByLabel("Intensidade").selectOption("moderate");
+  await session.getByLabel("FC mín. (bpm)").fill("120");
+  await session.getByLabel("FC máx. (bpm)").fill("140");
+  await session.getByRole("button", { name: "Adicionar ao treino" }).click();
+  await expect(session.getByText("20 min · moderada · FC 120–140 bpm").filter({ visible: true })).toBeVisible();
+
+  // Intervals swap the duration for rounds of work and rest.
+  await session.getByLabel("Atividade de cardio").selectOption({ label: "Air bike" });
+  await session.getByText("Intervalado", { exact: true }).click();
+  await session.getByLabel("Séries").fill("6");
+  await session.getByLabel("Estímulo (s)").fill("30");
+  await session.getByLabel("Descanso (s)").fill("60");
+  await session.getByLabel("Intensidade").selectOption("vigorous");
+  await session.getByRole("button", { name: "Adicionar ao treino" }).click();
+  await expect(session.getByText("6 × 30 s, descanso 1 min · intensa").filter({ visible: true })).toBeVisible();
+  await session.getByRole("button", { name: "Fechar" }).click();
+
+  const studentPage = await newPage(browser, "mobile");
+  await login(studentPage, student.email, student.password);
+  await studentPage.goto("/training");
+  // The plan's session link comes before the history entries.
+  await studentPage.getByRole("link", { name: /Treino A/ }).first().click();
+  await expect(studentPage.getByText("20 min · moderada · FC 120–140 bpm").filter({ visible: true })).toBeVisible();
+  await studentPage.getByRole("button", { name: "Iniciar treino" }).click();
+  await expect(studentPage).toHaveURL(/\/training\/log\/[0-9a-f-]{36}$/);
+
+  await studentPage.getByLabel("Duração em minutos — Esteira").fill("22");
+  await studentPage.getByLabel("Esforço percebido de 1 a 10 — Esteira").selectOption("6");
+  await studentPage.getByRole("button", { name: "Concluir cardio — Esteira" }).click();
+  await expect(studentPage.getByRole("button", { name: "Cardio concluído — Esteira" })).toBeEnabled();
+  await expect(studentPage.getByText("1 de 6 etapas", { exact: true }).filter({ visible: true })).toBeVisible();
+
+  await studentPage.reload();
+  await expect(studentPage.getByText("1 de 6 etapas", { exact: true }).filter({ visible: true })).toBeVisible();
+  await expect(studentPage.getByLabel("Duração em minutos — Esteira")).toHaveValue("22");
+  await studentPage.getByRole("button", { name: "Concluir treino" }).click();
+  await expect(studentPage.getByText("Concluído em").filter({ visible: true })).toBeVisible();
+  await expect(studentPage.getByText("Realizado: 22 min · esforço 6/10").filter({ visible: true })).toBeVisible();
+  await expect(studentPage.getByText("Cardio não registrado.").filter({ visible: true })).toBeVisible();
+  await studentPage.context().close();
+
+  // Cardio with history cannot be removed from the plan.
+  await page.reload();
+  await page.getByRole("region", { name: "Treino A" }).getByRole("button", { name: "Remover Esteira" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Remover" }).click();
+  await expect(page.getByText(/Já existem treinos registrados aqui/).filter({ visible: true })).toBeVisible();
+});

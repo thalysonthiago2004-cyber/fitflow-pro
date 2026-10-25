@@ -101,6 +101,63 @@ export type Database = {
           },
         ]
       }
+      cardio_logs: {
+        Row: {
+          avg_hr: number | null
+          completed: boolean
+          created_at: string
+          distance_km: number | null
+          duration_minutes: number | null
+          id: string
+          log_id: string
+          rounds_done: number | null
+          rpe: number | null
+          session_exercise_id: string
+          updated_at: string
+        }
+        Insert: {
+          avg_hr?: number | null
+          completed?: boolean
+          created_at?: string
+          distance_km?: number | null
+          duration_minutes?: number | null
+          id?: string
+          log_id: string
+          rounds_done?: number | null
+          rpe?: number | null
+          session_exercise_id: string
+          updated_at?: string
+        }
+        Update: {
+          avg_hr?: number | null
+          completed?: boolean
+          created_at?: string
+          distance_km?: number | null
+          duration_minutes?: number | null
+          id?: string
+          log_id?: string
+          rounds_done?: number | null
+          rpe?: number | null
+          session_exercise_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cardio_logs_log_id_fkey"
+            columns: ["log_id"]
+            isOneToOne: false
+            referencedRelation: "workout_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cardio_logs_session_exercise_id_fkey"
+            columns: ["session_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "session_exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercises: {
         Row: {
           archived: boolean
@@ -593,48 +650,81 @@ export type Database = {
       }
       session_exercises: {
         Row: {
+          cardio_mode: Database["public"]["Enums"]["cardio_mode"] | null
           created_at: string
+          distance_km: number | null
+          duration_minutes: number | null
           exercise_id: string
+          hr_max: number | null
+          hr_min: number | null
           id: string
+          incline_pct: number | null
+          intensity: Database["public"]["Enums"]["cardio_intensity"] | null
+          kind: Database["public"]["Enums"]["exercise_kind"]
           load_kg: number | null
           notes: string | null
           position: number
           reps_max: number | null
-          reps_min: number
+          reps_min: number | null
           rest_seconds: number | null
+          rounds: number | null
           session_id: string
-          sets: number
+          sets: number | null
+          speed_kmh: number | null
           updated_at: string
+          work_seconds: number | null
           workspace_id: string
         }
         Insert: {
+          cardio_mode?: Database["public"]["Enums"]["cardio_mode"] | null
           created_at?: string
+          distance_km?: number | null
+          duration_minutes?: number | null
           exercise_id: string
+          hr_max?: number | null
+          hr_min?: number | null
           id?: string
+          incline_pct?: number | null
+          intensity?: Database["public"]["Enums"]["cardio_intensity"] | null
+          kind?: Database["public"]["Enums"]["exercise_kind"]
           load_kg?: number | null
           notes?: string | null
           position?: number
           reps_max?: number | null
-          reps_min: number
+          reps_min?: number | null
           rest_seconds?: number | null
+          rounds?: number | null
           session_id: string
-          sets: number
+          sets?: number | null
+          speed_kmh?: number | null
           updated_at?: string
+          work_seconds?: number | null
           workspace_id: string
         }
         Update: {
+          cardio_mode?: Database["public"]["Enums"]["cardio_mode"] | null
           created_at?: string
+          distance_km?: number | null
+          duration_minutes?: number | null
           exercise_id?: string
+          hr_max?: number | null
+          hr_min?: number | null
           id?: string
+          incline_pct?: number | null
+          intensity?: Database["public"]["Enums"]["cardio_intensity"] | null
+          kind?: Database["public"]["Enums"]["exercise_kind"]
           load_kg?: number | null
           notes?: string | null
           position?: number
           reps_max?: number | null
-          reps_min?: number
+          reps_min?: number | null
           rest_seconds?: number | null
+          rounds?: number | null
           session_id?: string
-          sets?: number
+          sets?: number | null
+          speed_kmh?: number | null
           updated_at?: string
+          work_seconds?: number | null
           workspace_id?: string
         }
         Relationships: [
@@ -1078,6 +1168,8 @@ export type Database = {
       }
     }
     Enums: {
+      cardio_intensity: "light" | "moderate" | "vigorous"
+      cardio_mode: "continuous" | "intervals"
       equipment:
         | "barbell"
         | "dumbbell"
@@ -1087,6 +1179,7 @@ export type Database = {
         | "kettlebell"
         | "band"
         | "other"
+      exercise_kind: "strength" | "cardio"
       experience_level: "beginner" | "intermediate" | "advanced"
       food_basis: "g" | "ml"
       invitation_status: "pending" | "accepted" | "revoked"
@@ -1239,6 +1332,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      cardio_intensity: ["light", "moderate", "vigorous"],
+      cardio_mode: ["continuous", "intervals"],
       equipment: [
         "barbell",
         "dumbbell",
@@ -1249,6 +1344,7 @@ export const Constants = {
         "band",
         "other",
       ],
+      exercise_kind: ["strength", "cardio"],
       experience_level: ["beginner", "intermediate", "advanced"],
       food_basis: ["g", "ml"],
       invitation_status: ["pending", "accepted", "revoked"],

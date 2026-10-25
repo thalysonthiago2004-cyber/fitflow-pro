@@ -1,13 +1,13 @@
 import { FormField } from "@/components/forms/form-field";
 import type { FieldErrors } from "@/lib/auth/schemas";
-import type { Prescription } from "@/lib/workouts/queries";
+import type { StrengthPrescription } from "@/lib/workouts/queries";
 import { formatNumber } from "@/lib/format";
 
 type Props = {
   idPrefix: string;
   values?: Record<string, string>;
   errors?: FieldErrors;
-  current?: Prescription;
+  current?: StrengthPrescription;
 };
 
 // Shared inputs for creating and editing a prescribed exercise.

@@ -2,12 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft, ChevronDown } from "lucide-react";
+import { ArrowLeft, ChevronDown, HeartPulse } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { ExerciseDemo } from "@/components/workouts/exercise-demo";
-import { formatNumber } from "@/lib/format";
-import { formatReps, formatRest, formatWeekdays } from "@/lib/workouts/labels";
+import { formatPrescription, formatWeekdays } from "@/lib/workouts/labels";
 import { getOpenLog, getStudentPlans } from "@/lib/workouts/queries";
 import { StartWorkoutButton } from "../../start-workout-button";
 import { requireStudent } from "../../require-student";
@@ -42,12 +41,16 @@ async function SessionContent({ params }: Pick<PageProps<"/training/sessions/[se
             <div className="flex gap-3">
               <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold tabular-nums" aria-hidden>{index + 1}</span>
               <div className="grid gap-0.5">
-                <h2 className="font-semibold">{item.exercise.name}</h2>
-                <p className="text-sm text-muted-foreground">
-                  {item.sets} séries × {formatReps(item.repsMin, item.repsMax)} reps
-                  {item.loadKg !== null && ` · ${formatNumber(item.loadKg, 2)} kg`}
-                  {item.restSeconds ? ` · descanso ${formatRest(item.restSeconds)}` : ""}
-                </p>
+                <h2 className="flex flex-wrap items-center gap-2 font-semibold">
+                  {item.exercise.name}
+                  {item.kind === "cardio" && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                      <HeartPulse className="size-3.5" aria-hidden />
+                      Cardio
+                    </span>
+                  )}
+                </h2>
+                <p className="text-sm text-muted-foreground">{formatPrescription(item)}</p>
                 {item.notes && <p className="text-sm">{item.notes}</p>}
               </div>
             </div>

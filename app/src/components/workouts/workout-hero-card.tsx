@@ -14,7 +14,9 @@ type Props = {
 
 // The day's main action. Typography and a lime glow stand in for photography.
 export function WorkoutHeroCard({ session, eyebrow, href, cta, inProgress = false }: Props) {
-  const sets = session.exercises.reduce((sum, e) => sum + e.sets, 0);
+  const strength = session.exercises.flatMap((e) => (e.kind === "strength" ? [e] : []));
+  const sets = strength.reduce((sum, e) => sum + e.sets, 0);
+  const cardio = session.exercises.length - strength.length;
   const muscles = [...new Set(session.exercises.map((e) => e.exercise.name))].slice(0, 3);
 
   return (
@@ -34,7 +36,11 @@ export function WorkoutHeroCard({ session, eyebrow, href, cta, inProgress = fals
           </span>
           <span className="font-heading text-2xl font-extrabold tracking-tight sm:text-3xl">{session.name}</span>
           <span className="text-sm text-muted-foreground">
-            {session.exercises.length} {session.exercises.length === 1 ? "exercício" : "exercícios"} · {sets} séries · {formatWeekdays(session.weekdays)}
+            {[
+              strength.length > 0 && `${strength.length} ${strength.length === 1 ? "exercício" : "exercícios"} · ${sets} séries`,
+              cardio > 0 && `${cardio} cardio`,
+              formatWeekdays(session.weekdays),
+            ].filter(Boolean).join(" · ")}
           </span>
           {muscles.length > 0 && <span className="truncate text-sm text-muted-foreground">{muscles.join(" · ")}</span>}
         </div>

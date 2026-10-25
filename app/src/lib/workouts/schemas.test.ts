@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { exerciseSchema, prescriptionSchema, sessionSchema, setLogSchema, planSchema } from "./schemas";
+import { cardioLogSchema, cardioSchema, exerciseSchema, prescriptionSchema, sessionSchema, setLogSchema, planSchema } from "./schemas";
 
 describe("prescriptionSchema", () => {
   it("parses Brazilian input and optional fields", () => {
@@ -56,5 +56,43 @@ describe("setLogSchema", () => {
   it("accepts blank values and decimal loads", () => {
     expect(setLogSchema.parse({ reps: "", loadKg: "" })).toEqual({ reps: undefined, loadKg: undefined });
     expect(setLogSchema.parse({ reps: "10", loadKg: "12,5" })).toEqual({ reps: 10, loadKg: 12.5 });
+  });
+});
+
+describe("cardioSchema", () => {
+  const blank = { cardioMode: "continuous", durationMinutes: "", distanceKm: "", rounds: "", workSeconds: "", restSeconds: "", intensity: "", hrMin: "", hrMax: "", speedKmh: "", inclinePct: "", notes: "" };
+
+  it("accepts continuous cardio and drops interval fields", () => {
+    expect(cardioSchema.parse({ ...blank, durationMinutes: "30", distanceKm: "4,5", rounds: "8", intensity: "moderate" })).toMatchObject({
+      durationMinutes: 30,
+      distanceKm: 4.5,
+      rounds: null,
+      intensity: "moderate",
+    });
+  });
+
+  it("requires duration or distance for continuous, rounds and work for intervals", () => {
+    expect(cardioSchema.safeParse(blank).error?.issues[0].message).toBe("Informe a duração ou a distância.");
+    const messages = cardioSchema.safeParse({ ...blank, cardioMode: "intervals" }).error?.issues.map((i) => i.message);
+    expect(messages).toEqual(["Informe quantas séries.", "Informe o tempo de estímulo."]);
+  });
+
+  it("keeps the heart-rate range ordered", () => {
+    expect(cardioSchema.safeParse({ ...blank, durationMinutes: "20", hrMin: "150", hrMax: "130" }).error?.issues[0].message).toBe(
+      "A máxima precisa ser maior ou igual à mínima.",
+    );
+  });
+});
+
+describe("cardioLogSchema", () => {
+  it("parses decimal commas and bounds effort", () => {
+    expect(cardioLogSchema.parse({ durationMinutes: "28,5", distanceKm: "4,2", avgHr: "", rpe: "6", roundsDone: "" })).toEqual({
+      durationMinutes: 28.5,
+      distanceKm: 4.2,
+      avgHr: undefined,
+      rpe: 6,
+      roundsDone: undefined,
+    });
+    expect(cardioLogSchema.safeParse({ rpe: "11" }).success).toBe(false);
   });
 });

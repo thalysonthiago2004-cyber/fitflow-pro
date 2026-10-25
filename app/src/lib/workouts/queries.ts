@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import type { Equipment, MuscleGroup, PlanStatus } from "@/lib/supabase/database.types";
+import type { CardioIntensity, CardioMode, Equipment, MuscleGroup, PlanStatus } from "@/lib/supabase/database.types";
 
 // Every query runs with the caller's session; RLS decides visibility.
 
@@ -27,17 +27,40 @@ export type PlanSummary = {
   updatedAt: string;
 };
 
-export type Prescription = {
+type PrescriptionBase = {
   id: string;
   position: number;
+  notes: string | null;
+  exercise: Pick<Exercise, "id" | "name" | "muscleGroup" | "equipment" | "instructions" | "videoUrl">;
+};
+
+export type StrengthPrescription = PrescriptionBase & {
+  kind: "strength";
   sets: number;
   repsMin: number;
   repsMax: number | null;
   loadKg: number | null;
   restSeconds: number | null;
-  notes: string | null;
-  exercise: Pick<Exercise, "id" | "name" | "muscleGroup" | "equipment" | "instructions" | "videoUrl">;
 };
+
+export type CardioTarget = {
+  mode: CardioMode;
+  durationMinutes: number | null;
+  distanceKm: number | null;
+  intensity: CardioIntensity | null;
+  hrMin: number | null;
+  hrMax: number | null;
+  speedKmh: number | null;
+  inclinePct: number | null;
+  rounds: number | null;
+  workSeconds: number | null;
+  /** Rest between interval rounds. */
+  restSeconds: number | null;
+};
+
+export type CardioPrescription = PrescriptionBase & { kind: "cardio"; cardio: CardioTarget };
+
+export type Prescription = StrengthPrescription | CardioPrescription;
 
 export type SessionDetail = {
   id: string;
@@ -73,11 +96,22 @@ export type SetLog = {
   completed: boolean;
 };
 
+export type CardioLog = {
+  sessionExerciseId: string;
+  durationMinutes: number | null;
+  distanceKm: number | null;
+  avgHr: number | null;
+  rpe: number | null;
+  roundsDone: number | null;
+  completed: boolean;
+};
+
 export type LogDetail = LogSummary & {
   notes: string | null;
   planName: string;
   exercises: Prescription[];
   sets: SetLog[];
+  cardio: CardioLog[];
 };
 
 type ExerciseRow = {
@@ -185,7 +219,7 @@ async function loadSessions(planIds: string[]): Promise<Map<string, SessionDetai
     ? await supabase
         .from("session_exercises")
         .select(
-          "id, session_id, position, sets, reps_min, reps_max, load_kg, rest_seconds, notes, created_at, exercises(id, workspace_id, name, muscle_group, equipment, instructions, video_url)",
+          "id, session_id, position, kind, sets, reps_min, reps_max, load_kg, rest_seconds, notes, cardio_mode, duration_minutes, distance_km, intensity, hr_min, hr_max, speed_kmh, incline_pct, rounds, work_seconds, created_at, exercises(id, workspace_id, name, muscle_group, equipment, instructions, video_url)",
         )
         .in("session_id", sessionIds)
         .order("position")
@@ -196,18 +230,36 @@ async function loadSessions(planIds: string[]): Promise<Map<string, SessionDetai
   for (const session of sessions) {
     const exercises: Prescription[] = items
       .filter((item) => item.session_id === session.id && item.exercises)
-      .map((item) => {
-        const exercise = toExercise(item.exercises!);
+      .map((item): Prescription => {
+        const base = { id: item.id, position: item.position, notes: item.notes, exercise: toExercise(item.exercises!) };
+        if (item.kind === "cardio") {
+          return {
+            ...base,
+            kind: "cardio",
+            cardio: {
+              mode: item.cardio_mode!,
+              durationMinutes: item.duration_minutes,
+              distanceKm: num(item.distance_km),
+              intensity: item.intensity,
+              hrMin: item.hr_min,
+              hrMax: item.hr_max,
+              speedKmh: num(item.speed_kmh),
+              inclinePct: num(item.incline_pct),
+              rounds: item.rounds,
+              workSeconds: item.work_seconds,
+              restSeconds: item.rest_seconds,
+            },
+          };
+        }
+        // The database guarantees sets and reps for strength items.
         return {
-          id: item.id,
-          position: item.position,
-          sets: item.sets,
-          repsMin: item.reps_min,
+          ...base,
+          kind: "strength",
+          sets: item.sets!,
+          repsMin: item.reps_min!,
           repsMax: item.reps_max,
           loadKg: num(item.load_kg),
           restSeconds: item.rest_seconds,
-          notes: item.notes,
-          exercise,
         };
       });
     const list = byPlan.get(session.plan_id) ?? [];
@@ -311,7 +363,7 @@ export async function getLog(logId: string): Promise<LogDetail | null> {
   if (error) fail("log", error);
   if (!log) return null;
 
-  const [names, sessions, plan, sets] = await Promise.all([
+  const [names, sessions, plan, sets, cardio] = await Promise.all([
     profileNames([log.student_id]),
     loadSessions([log.plan_id]),
     supabase.from("workout_plans").select("name").eq("id", log.plan_id).maybeSingle(),
@@ -320,8 +372,13 @@ export async function getLog(logId: string): Promise<LogDetail | null> {
       .select("id, session_exercise_id, set_number, reps, load_kg, completed")
       .eq("log_id", log.id)
       .order("set_number"),
+    supabase
+      .from("cardio_logs")
+      .select("session_exercise_id, duration_minutes, distance_km, avg_hr, rpe, rounds_done, completed")
+      .eq("log_id", log.id),
   ]);
   if (sets.error) fail("sets", sets.error);
+  if (cardio.error) fail("cardio", cardio.error);
   const session = sessions.get(log.plan_id)?.find((s) => s.id === log.session_id);
 
   return {
@@ -343,6 +400,15 @@ export async function getLog(logId: string): Promise<LogDetail | null> {
       reps: s.reps,
       loadKg: num(s.load_kg),
       completed: s.completed,
+    })),
+    cardio: cardio.data.map((c) => ({
+      sessionExerciseId: c.session_exercise_id,
+      durationMinutes: num(c.duration_minutes),
+      distanceKm: num(c.distance_km),
+      avgHr: c.avg_hr,
+      rpe: c.rpe,
+      roundsDone: c.rounds_done,
+      completed: c.completed,
     })),
   };
 }

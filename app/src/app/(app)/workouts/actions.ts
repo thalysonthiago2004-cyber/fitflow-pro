@@ -10,7 +10,7 @@ import { moveInList } from "@/lib/reorder";
 import { GENERIC_DB_ERROR } from "@/lib/students/errors";
 import type { PlanStatus } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
-import { newPlanSchema, planSchema, prescriptionSchema, sessionSchema } from "@/lib/workouts/schemas";
+import { cardioSchema, newPlanSchema, planSchema, prescriptionSchema, sessionSchema } from "@/lib/workouts/schemas";
 
 export type ActionResult = { ok: true } | { ok: false; message: string };
 
@@ -34,6 +34,29 @@ function readPrescription(formData: FormData) {
     loadKg: formString(formData, "loadKg"),
     restSeconds: formString(formData, "restSeconds"),
     notes: formString(formData, "notes"),
+  };
+}
+
+const CARDIO_FIELDS = ["cardioMode", "durationMinutes", "distanceKm", "rounds", "workSeconds", "restSeconds", "intensity", "hrMin", "hrMax", "speedKmh", "inclinePct", "notes"] as const;
+
+function readCardio(formData: FormData) {
+  return Object.fromEntries(CARDIO_FIELDS.map((key) => [key, formString(formData, key)]));
+}
+
+function cardioColumns(data: ReturnType<typeof cardioSchema.parse>) {
+  return {
+    cardio_mode: data.cardioMode,
+    duration_minutes: data.durationMinutes,
+    distance_km: data.distanceKm,
+    rounds: data.rounds,
+    work_seconds: data.workSeconds,
+    rest_seconds: data.restSeconds,
+    intensity: data.intensity,
+    hr_min: data.hrMin,
+    hr_max: data.hrMax,
+    speed_kmh: data.speedKmh,
+    incline_pct: data.inclinePct,
+    notes: data.notes,
   };
 }
 
@@ -283,6 +306,7 @@ export async function updatePrescription(itemId: string, _prev: FormState, formD
     })
     .eq("id", itemId)
     .eq("workspace_id", ctx.user.workspace.id)
+    .eq("kind", "strength")
     .select("id");
   if (error || !data?.length) return { status: "error", message: GENERIC_DB_ERROR, values };
 
@@ -290,11 +314,70 @@ export async function updatePrescription(itemId: string, _prev: FormState, formD
   return { status: "success", message: "Exercício atualizado.", values };
 }
 
+// Cardio -----------------------------------------------------------------------
+// The database derives the item's kind from the exercise; checking the muscle
+// group first only turns a constraint error into a clear message.
+
+export async function addCardio(sessionId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const values = { ...readCardio(formData), exerciseId: formString(formData, "exerciseId") };
+  const ctx = await staffContext(sessionId);
+  if (!ctx) return { status: "error", message: GENERIC_DB_ERROR, values };
+  const pickError = { status: "error" as const, message: "Revise os campos destacados.", fieldErrors: { exerciseId: ["Selecione uma atividade de cardio."] }, values };
+  if (!id.safeParse(values.exerciseId).success) return pickError;
+  const parsed = cardioSchema.safeParse(values);
+  if (!parsed.success) return validationError(parsed.error, values);
+
+  const { data: exercise } = await ctx.supabase.from("exercises").select("muscle_group").eq("id", values.exerciseId).maybeSingle();
+  if (exercise?.muscle_group !== "cardio") return pickError;
+
+  const { data: last } = await ctx.supabase
+    .from("session_exercises")
+    .select("position")
+    .eq("session_id", sessionId)
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const { error } = await ctx.supabase.from("session_exercises").insert({
+    workspace_id: ctx.user.workspace.id,
+    session_id: sessionId,
+    exercise_id: values.exerciseId,
+    position: (last?.position ?? -1) + 1,
+    ...cardioColumns(parsed.data),
+  });
+  if (error) return { status: "error", message: GENERIC_DB_ERROR, values };
+
+  refresh();
+  return { status: "success", message: "Cardio adicionado." };
+}
+
+export async function updateCardio(itemId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const values = readCardio(formData);
+  const ctx = await staffContext(itemId);
+  if (!ctx) return { status: "error", message: GENERIC_DB_ERROR, values };
+  const parsed = cardioSchema.safeParse(values);
+  if (!parsed.success) return validationError(parsed.error, values);
+
+  const { data, error } = await ctx.supabase
+    .from("session_exercises")
+    .update(cardioColumns(parsed.data))
+    .eq("id", itemId)
+    .eq("workspace_id", ctx.user.workspace.id)
+    .eq("kind", "cardio")
+    .select("id");
+  if (error || !data?.length) return { status: "error", message: GENERIC_DB_ERROR, values };
+
+  refresh();
+  return { status: "success", message: "Cardio atualizado.", values };
+}
+
 export async function deletePrescription(itemId: string): Promise<ActionResult> {
   const ctx = await staffContext(itemId);
   if (!ctx) return { ok: false, message: GENERIC_DB_ERROR };
-  const { count } = await ctx.supabase.from("set_logs").select("id", { count: "exact", head: true }).eq("session_exercise_id", itemId);
-  if (count) return { ok: false, message: HAS_HISTORY };
+  const [{ count: sets }, { count: cardio }] = await Promise.all([
+    ctx.supabase.from("set_logs").select("id", { count: "exact", head: true }).eq("session_exercise_id", itemId),
+    ctx.supabase.from("cardio_logs").select("id", { count: "exact", head: true }).eq("session_exercise_id", itemId),
+  ]);
+  if (sets || cardio) return { ok: false, message: HAS_HISTORY };
 
   const { data, error } = await ctx.supabase
     .from("session_exercises")

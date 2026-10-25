@@ -1,14 +1,15 @@
 import { CircleCheck, CircleDashed } from "lucide-react";
 import { formatDateTime, formatDuration, formatNumber } from "@/lib/format";
 import { RESISTANCE_TRAINING_MET, estimateWorkoutKcal } from "@/lib/progress/calc";
-import { formatReps } from "@/lib/workouts/labels";
+import { formatPrescription } from "@/lib/workouts/labels";
 import type { LogDetail } from "@/lib/workouts/queries";
 
 // Read-only summary of a recorded workout: prescribed vs. performed.
 export function LogView({ log, weightKg = null }: { log: LogDetail; weightKg?: number | null }) {
   const kcal = estimateWorkoutKcal(weightKg, log.startedAt, log.completedAt);
-  const done = log.sets.filter((s) => s.completed).length;
-  const planned = log.exercises.reduce((sum, e) => sum + e.sets, 0);
+  const hasCardio = log.exercises.some((e) => e.kind === "cardio");
+  const done = log.sets.filter((s) => s.completed).length + log.cardio.filter((c) => c.completed).length;
+  const planned = log.exercises.reduce((sum, e) => sum + (e.kind === "cardio" ? 1 : e.sets), 0);
 
   return (
     <div className="grid gap-6">
@@ -22,7 +23,7 @@ export function LogView({ log, weightKg = null }: { log: LogDetail; weightKg?: n
           <dd className="text-sm font-medium">{log.completedAt ? formatDuration(log.startedAt, log.completedAt) : "Em andamento"}</dd>
         </div>
         <div className="grid gap-0.5">
-          <dt className="text-xs text-muted-foreground">Séries concluídas</dt>
+          <dt className="text-xs text-muted-foreground">{hasCardio ? "Etapas concluídas" : "Séries concluídas"}</dt>
           <dd className="text-sm font-medium tabular-nums">{done} de {planned}</dd>
         </div>
         <div className="grid gap-0.5">
@@ -55,13 +56,37 @@ export function LogView({ log, weightKg = null }: { log: LogDetail; weightKg?: n
       <ol className="grid gap-3">
         {log.exercises.map((item) => {
           const sets = log.sets.filter((s) => s.sessionExerciseId === item.id);
+          if (item.kind === "cardio") {
+            const c = log.cardio.find((entry) => entry.sessionExerciseId === item.id);
+            const performed = c
+              ? [
+                  c.roundsDone != null && `${c.roundsDone} séries`,
+                  c.durationMinutes != null && `${formatNumber(c.durationMinutes, 1)} min`,
+                  c.distanceKm != null && `${formatNumber(c.distanceKm, 2)} km`,
+                  c.avgHr != null && `FC média ${c.avgHr} bpm`,
+                  c.rpe != null && `esforço ${c.rpe}/10`,
+                ].filter(Boolean).join(" · ")
+              : "";
+            return (
+              <li key={item.id} className="rounded-xl border bg-card p-4">
+                <p className="font-medium">{item.exercise.name} <span className="text-sm font-normal text-muted-foreground">· cardio</span></p>
+                <p className="text-sm text-muted-foreground">Prescrito: {formatPrescription(item)}</p>
+                {c ? (
+                  <p className="mt-2 flex items-center gap-2 text-sm">
+                    {c.completed ? <CircleCheck className="size-4 shrink-0 text-success" aria-hidden /> : <CircleDashed className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
+                    <span className="tabular-nums">Realizado: {performed || "sem detalhes"}</span>
+                    <span className="sr-only">{c.completed ? "concluído" : "não concluído"}</span>
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm text-muted-foreground">Cardio não registrado.</p>
+                )}
+              </li>
+            );
+          }
           return (
             <li key={item.id} className="rounded-xl border bg-card p-4">
               <p className="font-medium">{item.exercise.name}</p>
-              <p className="text-sm text-muted-foreground">
-                Prescrito: {item.sets} × {formatReps(item.repsMin, item.repsMax)}
-                {item.loadKg !== null && ` · ${formatNumber(item.loadKg, 2)} kg`}
-              </p>
+              <p className="text-sm text-muted-foreground">Prescrito: {formatPrescription(item)}</p>
               {sets.length === 0 ? (
                 <p className="mt-2 text-sm text-muted-foreground">Nenhuma série registrada.</p>
               ) : (

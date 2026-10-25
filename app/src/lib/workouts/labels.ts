@@ -1,4 +1,6 @@
-import type { Equipment, MuscleGroup, PlanStatus } from "@/lib/supabase/database.types";
+import { formatNumber } from "@/lib/format";
+import type { CardioIntensity, CardioMode, Equipment, MuscleGroup, PlanStatus } from "@/lib/supabase/database.types";
+import type { CardioTarget, Prescription } from "./queries";
 
 export const MUSCLE_GROUP_LABELS: Record<MuscleGroup, string> = {
   chest: "Peito",
@@ -61,6 +63,50 @@ export function formatRest(seconds: number | null): string | null {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return s ? `${m} min ${s} s` : `${m} min`;
+}
+
+export const CARDIO_MODE_LABELS: Record<CardioMode, string> = {
+  continuous: "Contínuo",
+  intervals: "Intervalado",
+};
+
+export const INTENSITY_LABELS: Record<CardioIntensity, string> = {
+  light: "Leve",
+  moderate: "Moderada",
+  vigorous: "Intensa",
+};
+
+/** "30 min · 5 km · moderada · FC 130–150 bpm" or "8 × 1 min, descanso 1 min 30 s · intensa". */
+export function formatCardio(c: CardioTarget): string {
+  const parts: string[] = [];
+  if (c.mode === "intervals" && c.rounds && c.workSeconds) {
+    const rest = formatRest(c.restSeconds);
+    parts.push(`${c.rounds} × ${formatRest(c.workSeconds)}${rest ? `, descanso ${rest}` : ""}`);
+  } else {
+    if (c.durationMinutes) parts.push(`${c.durationMinutes} min`);
+    if (c.distanceKm) parts.push(`${formatNumber(c.distanceKm, 2)} km`);
+  }
+  if (c.intensity) parts.push(INTENSITY_LABELS[c.intensity].toLowerCase());
+  if (c.hrMin || c.hrMax) parts.push(`FC ${c.hrMin && c.hrMax ? `${c.hrMin}–${c.hrMax}` : (c.hrMin ?? c.hrMax)} bpm`);
+  if (c.speedKmh) parts.push(`${formatNumber(c.speedKmh, 1)} km/h`);
+  if (c.inclinePct) parts.push(`inclinação ${formatNumber(c.inclinePct, 1)}%`);
+  return parts.join(" · ");
+}
+
+/** One-line target for any prescribed item. */
+export function formatPrescription(item: Prescription): string {
+  if (item.kind === "cardio") return formatCardio(item.cardio);
+  const rest = formatRest(item.restSeconds);
+  return [
+    `${item.sets} × ${formatReps(item.repsMin, item.repsMax)}`,
+    item.loadKg !== null ? `${formatNumber(item.loadKg, 2)} kg` : null,
+    rest ? `descanso ${rest}` : null,
+  ].filter(Boolean).join(" · ");
+}
+
+/** Units counted toward progress: each strength set, and each cardio block as one. */
+export function plannedUnits(items: Prescription[]): number {
+  return items.reduce((sum, item) => sum + (item.kind === "cardio" ? 1 : item.sets), 0);
 }
 
 export const muscleGroupOptions = Object.entries(MUSCLE_GROUP_LABELS).map(([value, label]) => ({ value, label }));

@@ -18,3 +18,6 @@ export type MealItemUnit = Enums<"meal_item_unit">;
 export type Sex = Enums<"sex">;
 export type MeasurementSource = Enums<"measurement_source">;
 export type PhotoPose = Enums<"photo_pose">;
+export type ExerciseKind = Enums<"exercise_kind">;
+export type CardioMode = Enums<"cardio_mode">;
+export type CardioIntensity = Enums<"cardio_intensity">;

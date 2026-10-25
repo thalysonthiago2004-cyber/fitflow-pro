@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, LoaderCircle, Timer, X } from "lucide-react";
+import { Check, ChevronDown, HeartPulse, LoaderCircle, Timer, X } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmAction } from "@/components/confirm-action";
@@ -11,16 +11,17 @@ import { ExerciseDemo } from "@/components/workouts/exercise-demo";
 import { Button } from "@/components/ui/button";
 import { initialFormState } from "@/lib/auth/schemas";
 import { formatNumber } from "@/lib/format";
-import { formatReps, formatRest } from "@/lib/workouts/labels";
-import type { LogDetail, Prescription } from "@/lib/workouts/queries";
+import { formatPrescription, formatReps, formatRest } from "@/lib/workouts/labels";
+import type { LogDetail, StrengthPrescription } from "@/lib/workouts/queries";
 import { cn } from "@/lib/utils";
 import { discardWorkout, finishWorkout, saveSet } from "../../actions";
+import { CardioBlock, type CardioStatus } from "./cardio-block";
 
 type SetState = { reps: string; loadKg: string; completed: boolean; saving: boolean };
 
 function initialSets(log: LogDetail): Record<string, SetState[]> {
   return Object.fromEntries(
-    log.exercises.map((item) => [
+    log.exercises.flatMap((item) => (item.kind === "strength" ? [item] : [])).map((item) => [
       item.id,
       Array.from({ length: item.sets }, (_, i) => {
         const saved = log.sets.find((s) => s.sessionExerciseId === item.id && s.setNumber === i + 1);
@@ -37,11 +38,21 @@ function initialSets(log: LogDetail): Record<string, SetState[]> {
 
 export function WorkoutLogger({ log }: { log: LogDetail }) {
   const [sets, setSets] = useState(() => initialSets(log));
+  const [cardio, setCardio] = useState<Record<string, CardioStatus>>(() =>
+    Object.fromEntries(
+      log.exercises
+        .filter((item) => item.kind === "cardio")
+        .map((item) => [item.id, { completed: log.cardio.find((c) => c.sessionExerciseId === item.id)?.completed ?? false, saving: false }]),
+    ),
+  );
   const [rest, setRest] = useState<{ total: number; endsAt: number } | null>(null);
 
-  const done = Object.values(sets).flat().filter((s) => s.completed).length;
-  const planned = Object.values(sets).flat().length;
-  const saving = Object.values(sets).flat().some((s) => s.saving);
+  // Each strength set and each cardio block is one step of the workout.
+  const steps = [...Object.values(sets).flat(), ...Object.values(cardio)];
+  const done = steps.filter((s) => s.completed).length;
+  const planned = steps.length;
+  const saving = steps.some((s) => s.saving);
+  const unit = Object.keys(cardio).length > 0 ? "etapas" : "séries";
 
   // Leaving mid-save would drop the set; ask the browser to confirm first.
   useEffect(() => {
@@ -58,7 +69,7 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
     }));
   }
 
-  async function toggle(item: Prescription, index: number) {
+  async function toggle(item: StrengthPrescription, index: number) {
     const set = sets[item.id][index];
     const completed = !set.completed;
     update(item.id, index, { completed, saving: true });
@@ -80,12 +91,12 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
       <div className="sticky top-16 z-20 -mx-4 border-b bg-background/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border lg:top-4">
         <div className="flex items-center justify-between gap-3 text-sm">
           <span className="font-medium">Progresso</span>
-          <span className="tabular-nums text-muted-foreground" aria-live="polite">{done} de {planned} séries</span>
+          <span className="tabular-nums text-muted-foreground" aria-live="polite">{done} de {planned} {unit}</span>
         </div>
         <div
           className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--meter-track)]"
           role="progressbar"
-          aria-label="Séries concluídas"
+          aria-label={unit === "etapas" ? "Etapas concluídas" : "Séries concluídas"}
           aria-valuemin={0}
           aria-valuemax={planned}
           aria-valuenow={done}
@@ -98,13 +109,12 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
         {log.exercises.map((item, exerciseIndex) => (
           <li key={item.id} className="grid gap-4 rounded-3xl border bg-card p-4 sm:p-5">
             <div className="grid gap-1">
-              <p className="text-xs font-medium text-muted-foreground">Exercício {exerciseIndex + 1} de {log.exercises.length}</p>
-              <h2 className="font-heading text-lg font-semibold">{item.exercise.name}</h2>
-              <p className="text-sm text-muted-foreground">
-                {item.sets} × {formatReps(item.repsMin, item.repsMax)} reps
-                {item.loadKg !== null && ` · ${formatNumber(item.loadKg, 2)} kg`}
-                {item.restSeconds ? ` · descanso ${formatRest(item.restSeconds)}` : ""}
+              <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                {item.kind === "cardio" && <HeartPulse className="size-3.5" aria-hidden />}
+                {item.kind === "cardio" ? "Cardio" : "Exercício"} {exerciseIndex + 1} de {log.exercises.length}
               </p>
+              <h2 className="font-heading text-lg font-semibold">{item.exercise.name}</h2>
+              <p className="text-sm text-muted-foreground">{item.kind === "cardio" ? `Meta: ${formatPrescription(item)}` : `${item.sets} × ${formatReps(item.repsMin, item.repsMax)} reps${item.loadKg !== null ? ` · ${formatNumber(item.loadKg, 2)} kg` : ""}${item.restSeconds ? ` · descanso ${formatRest(item.restSeconds)}` : ""}`}</p>
               {item.notes && <p className="text-sm">{item.notes}</p>}
             </div>
 
@@ -118,69 +128,78 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
               </div>
             </details>
 
-            <div className="grid gap-2">
-              <div className="grid grid-cols-[3rem_minmax(0,1fr)_minmax(0,1fr)_3rem] gap-2 px-1 text-xs text-muted-foreground" aria-hidden>
-                <span>Série</span>
-                <span>Reps</span>
-                <span>Carga (kg)</span>
-                <span className="text-center">Feita</span>
-              </div>
-              {sets[item.id].map((set, index) => {
-                const label = `${item.exercise.name}, série ${index + 1}`;
-                return (
-                  <div
-                    key={index}
-                    className={cn(
-                      "grid grid-cols-[3rem_minmax(0,1fr)_minmax(0,1fr)_3rem] items-center gap-2 rounded-lg p-1",
-                      set.completed && "bg-brand/15 dark:bg-brand/10",
-                    )}
-                  >
-                    <span className="text-center text-sm font-semibold tabular-nums">{index + 1}</span>
-                    <input
-                      aria-label={`Repetições — ${label}`}
-                      inputMode="numeric"
-                      placeholder={formatReps(item.repsMin, item.repsMax)}
-                      value={set.reps}
-                      disabled={set.completed}
-                      onChange={(e) => update(item.id, index, { reps: e.target.value.replace(/[^\d]/g, "").slice(0, 3) })}
-                      className="h-11 w-full min-w-0 rounded-lg border border-input bg-transparent px-3 text-base tabular-nums outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-70 dark:bg-input/30"
-                    />
-                    <input
-                      aria-label={`Carga em kg — ${label}`}
-                      inputMode="decimal"
-                      placeholder="0"
-                      value={set.loadKg}
-                      disabled={set.completed}
-                      onChange={(e) => update(item.id, index, { loadKg: e.target.value.replace(/[^\d.,]/g, "").slice(0, 7) })}
-                      className="h-11 w-full min-w-0 rounded-lg border border-input bg-transparent px-3 text-base tabular-nums outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-70 dark:bg-input/30"
-                    />
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant={set.completed ? "default" : "outline"}
-                      aria-pressed={set.completed}
-                      aria-label={set.completed ? `Desmarcar ${label}` : `Concluir ${label}`}
-                      disabled={set.saving}
-                      onClick={() => toggle(item, index)}
-                      className={cn(set.completed && "bg-brand text-brand-foreground hover:bg-brand/90 dark:glow-brand")}
+            {item.kind === "cardio" ? (
+              <CardioBlock
+                logId={log.id}
+                item={item}
+                saved={log.cardio.find((c) => c.sessionExerciseId === item.id)}
+                onStatus={(status) => setCardio((current) => ({ ...current, [item.id]: status }))}
+              />
+            ) : (
+              <div className="grid gap-2">
+                <div className="grid grid-cols-[3rem_minmax(0,1fr)_minmax(0,1fr)_3rem] gap-2 px-1 text-xs text-muted-foreground" aria-hidden>
+                  <span>Série</span>
+                  <span>Reps</span>
+                  <span>Carga (kg)</span>
+                  <span className="text-center">Feita</span>
+                </div>
+                {sets[item.id].map((set, index) => {
+                  const label = `${item.exercise.name}, série ${index + 1}`;
+                  return (
+                    <div
+                      key={index}
+                      className={cn(
+                        "grid grid-cols-[3rem_minmax(0,1fr)_minmax(0,1fr)_3rem] items-center gap-2 rounded-lg p-1",
+                        set.completed && "bg-brand/15 dark:bg-brand/10",
+                      )}
                     >
-                      {set.saving ? <LoaderCircle className="animate-spin" aria-hidden /> : <Check aria-hidden />}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
+                      <span className="text-center text-sm font-semibold tabular-nums">{index + 1}</span>
+                      <input
+                        aria-label={`Repetições — ${label}`}
+                        inputMode="numeric"
+                        placeholder={formatReps(item.repsMin, item.repsMax)}
+                        value={set.reps}
+                        disabled={set.completed}
+                        onChange={(e) => update(item.id, index, { reps: e.target.value.replace(/[^\d]/g, "").slice(0, 3) })}
+                        className="h-11 w-full min-w-0 rounded-lg border border-input bg-transparent px-3 text-base tabular-nums outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-70 dark:bg-input/30"
+                      />
+                      <input
+                        aria-label={`Carga em kg — ${label}`}
+                        inputMode="decimal"
+                        placeholder="0"
+                        value={set.loadKg}
+                        disabled={set.completed}
+                        onChange={(e) => update(item.id, index, { loadKg: e.target.value.replace(/[^\d.,]/g, "").slice(0, 7) })}
+                        className="h-11 w-full min-w-0 rounded-lg border border-input bg-transparent px-3 text-base tabular-nums outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-70 dark:bg-input/30"
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant={set.completed ? "default" : "outline"}
+                        aria-pressed={set.completed}
+                        aria-label={set.completed ? `Desmarcar ${label}` : `Concluir ${label}`}
+                        disabled={set.saving}
+                        onClick={() => toggle(item, index)}
+                        className={cn(set.completed && "bg-brand text-brand-foreground hover:bg-brand/90 dark:glow-brand")}
+                      >
+                        {set.saving ? <LoaderCircle className="animate-spin" aria-hidden /> : <Check aria-hidden />}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </li>
         ))}
       </ol>
 
-      <FinishWorkout logId={log.id} done={done} planned={planned} />
+      <FinishWorkout logId={log.id} done={done} planned={planned} unit={unit} />
       {rest && <RestTimer key={rest.endsAt} total={rest.total} endsAt={rest.endsAt} onClose={() => setRest(null)} />}
     </div>
   );
 }
 
-function FinishWorkout({ logId, done, planned }: { logId: string; done: number; planned: number }) {
+function FinishWorkout({ logId, done, planned, unit }: { logId: string; done: number; planned: number; unit: string }) {
   const [state, action, pending] = useActionState(finishWorkout.bind(null, logId), initialFormState);
 
   return (
@@ -199,7 +218,7 @@ function FinishWorkout({ logId, done, planned }: { logId: string; done: number; 
         />
         {done < planned && (
           <p className="text-sm text-muted-foreground">
-            Você concluiu {done} de {planned} séries. Só as séries marcadas como feitas entram no histórico como concluídas.
+            Você concluiu {done} de {planned} {unit}. Só o que foi marcado como feito entra no histórico como concluído.
           </p>
         )}
         <div className="flex flex-col gap-2 sm:flex-row">

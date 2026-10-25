@@ -99,3 +99,69 @@ export const setLogSchema = z.object({
   ),
   loadKg: z.preprocess(parseDecimal, z.number({ error: "Carga inválida." }).min(0).max(1000).optional()),
 });
+
+const optionalDecimal = (label: string, min: number, max: number, example: string) =>
+  z.preprocess(
+    parseDecimal,
+    z
+      .number({ error: `Informe ${label}, ex.: ${example}.` })
+      .min(min, `Use um valor entre ${String(min).replace(".", ",")} e ${max}.`)
+      .max(max, `Use um valor entre ${String(min).replace(".", ",")} e ${max}.`)
+      .optional(),
+  );
+
+// Cardio targets. Fields that do not apply to the chosen mode are dropped, so
+// switching modes never leaves stale values behind.
+export const cardioSchema = z
+  .object({
+    cardioMode: z.enum(["continuous", "intervals"], { error: "Escolha contínuo ou intervalado." }),
+    durationMinutes: optionalInt("a duração", 1, 300),
+    distanceKm: optionalDecimal("a distância em km", 0.1, 200, "5 ou 2,5"),
+    rounds: optionalInt("as séries", 1, 50),
+    workSeconds: optionalInt("o tempo de estímulo", 5, 1800),
+    restSeconds: optionalInt("o descanso", 0, 900),
+    intensity: z.preprocess(blankToUndefined, z.enum(["light", "moderate", "vigorous"], { error: "Selecione a intensidade." }).optional()),
+    hrMin: optionalInt("a frequência mínima", 40, 220),
+    hrMax: optionalInt("a frequência máxima", 40, 220),
+    speedKmh: optionalDecimal("a velocidade em km/h", 0.5, 40, "8,5"),
+    inclinePct: optionalDecimal("a inclinação em %", 0, 40, "2"),
+    notes: optionalText(500, "As observações podem ter no máximo 500 caracteres."),
+  })
+  .superRefine((data, ctx) => {
+    if (data.cardioMode === "continuous" && data.durationMinutes === undefined && data.distanceKm === undefined) {
+      ctx.addIssue({ code: "custom", message: "Informe a duração ou a distância.", path: ["durationMinutes"] });
+    }
+    if (data.cardioMode === "intervals") {
+      if (data.rounds === undefined) ctx.addIssue({ code: "custom", message: "Informe quantas séries.", path: ["rounds"] });
+      if (data.workSeconds === undefined) ctx.addIssue({ code: "custom", message: "Informe o tempo de estímulo.", path: ["workSeconds"] });
+    }
+    if (data.hrMin !== undefined && data.hrMax !== undefined && data.hrMax < data.hrMin) {
+      ctx.addIssue({ code: "custom", message: "A máxima precisa ser maior ou igual à mínima.", path: ["hrMax"] });
+    }
+  })
+  .transform((data) => {
+    const continuous = data.cardioMode === "continuous";
+    const round = (n: number | undefined, digits: number) => (n === undefined ? null : Math.round(n * 10 ** digits) / 10 ** digits);
+    return {
+      cardioMode: data.cardioMode,
+      durationMinutes: continuous ? (data.durationMinutes ?? null) : null,
+      distanceKm: continuous ? round(data.distanceKm, 2) : null,
+      rounds: continuous ? null : data.rounds!,
+      workSeconds: continuous ? null : data.workSeconds!,
+      restSeconds: continuous ? null : (data.restSeconds ?? null),
+      intensity: data.intensity ?? null,
+      hrMin: data.hrMin ?? null,
+      hrMax: data.hrMax ?? null,
+      speedKmh: round(data.speedKmh, 1),
+      inclinePct: round(data.inclinePct, 1),
+      notes: data.notes,
+    };
+  });
+
+export const cardioLogSchema = z.object({
+  durationMinutes: optionalDecimal("a duração em minutos", 0, 600, "30"),
+  distanceKm: optionalDecimal("a distância em km", 0, 200, "4,5"),
+  avgHr: optionalInt("a frequência média", 30, 230),
+  rpe: optionalInt("o esforço", 1, 10),
+  roundsDone: optionalInt("as séries feitas", 0, 50),
+});

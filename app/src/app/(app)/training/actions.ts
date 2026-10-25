@@ -8,7 +8,7 @@ import { formString } from "@/lib/auth/form-state";
 import type { FormState } from "@/lib/auth/schemas";
 import { GENERIC_DB_ERROR } from "@/lib/students/errors";
 import { createClient } from "@/lib/supabase/server";
-import { setLogSchema } from "@/lib/workouts/schemas";
+import { cardioLogSchema, setLogSchema } from "@/lib/workouts/schemas";
 
 export type ActionResult = { ok: true } | { ok: false; message: string };
 
@@ -87,6 +87,51 @@ export async function saveSet(input: SetInput): Promise<ActionResult> {
         set_number: input.setNumber,
         ...values,
       });
+  if (error) return { ok: false, message: GENERIC_DB_ERROR };
+  return { ok: true };
+}
+
+type CardioInput = {
+  logId: string;
+  sessionExerciseId: string;
+  durationMinutes: string;
+  distanceKm: string;
+  avgHr: string;
+  rpe: string;
+  roundsDone: string;
+  completed: boolean;
+};
+
+export async function saveCardio(input: CardioInput): Promise<ActionResult> {
+  if (!id.safeParse(input.logId).success || !id.safeParse(input.sessionExerciseId).success) {
+    return { ok: false, message: GENERIC_DB_ERROR };
+  }
+  const parsed = cardioLogSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0].message };
+
+  const { supabase } = await studentContext();
+  const { data: log } = await supabase.from("workout_logs").select("completed_at").eq("id", input.logId).maybeSingle();
+  if (!log) return { ok: false, message: GENERIC_DB_ERROR };
+  if (log.completed_at) return { ok: false, message: "Este treino já foi concluído." };
+
+  const values = {
+    duration_minutes: parsed.data.durationMinutes ?? null,
+    distance_km: parsed.data.distanceKm ?? null,
+    avg_hr: parsed.data.avgHr ?? null,
+    rpe: parsed.data.rpe ?? null,
+    rounds_done: parsed.data.roundsDone ?? null,
+    completed: input.completed,
+  };
+  const { data: existing } = await supabase
+    .from("cardio_logs")
+    .select("id")
+    .eq("log_id", input.logId)
+    .eq("session_exercise_id", input.sessionExerciseId)
+    .maybeSingle();
+
+  const { error } = existing
+    ? await supabase.from("cardio_logs").update(values).eq("id", existing.id)
+    : await supabase.from("cardio_logs").insert({ log_id: input.logId, session_exercise_id: input.sessionExerciseId, ...values });
   if (error) return { ok: false, message: GENERIC_DB_ERROR };
   return { ok: true };
 }
