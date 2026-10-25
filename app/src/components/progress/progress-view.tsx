@@ -69,6 +69,13 @@ export async function ProgressView({ studentId, viewerId }: { studentId: string;
 
       <CompositionCard measurements={measurements} profile={profile} isStudent={viewerId === studentId} />
 
+      <Card className="gap-6 py-6 [--card-spacing:--spacing(6)]">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold"><h2>Registrar medição ou bioimpedância</h2></CardTitle>
+        </CardHeader>
+        <CardContent><MeasurementEntry studentId={studentId} /></CardContent>
+      </Card>
+
       <Card className="gap-4 py-6 [--card-spacing:--spacing(6)]">
         <CardHeader>
           <CardTitle className="text-lg font-semibold"><h2>Antes e depois</h2></CardTitle>
@@ -109,13 +116,6 @@ export async function ProgressView({ studentId, viewerId }: { studentId: string;
             </ul>
           )}
         </CardContent>
-      </Card>
-
-      <Card className="gap-6 py-6 [--card-spacing:--spacing(6)]">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold"><h2>Registrar medição</h2></CardTitle>
-        </CardHeader>
-        <CardContent><MeasurementEntry studentId={studentId} /></CardContent>
       </Card>
 
       <Card className="gap-4 py-6 [--card-spacing:--spacing(6)]">

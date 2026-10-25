@@ -49,7 +49,7 @@ export function CompositionCard({ measurements, profile, isStudent }: { measurem
   const basis = [weight && `peso de ${formatDate(weight.measuredOn)}`, tape && `circunferências de ${formatDate(tape.measuredOn)}`].filter(Boolean).join(" e ");
 
   return (
-    <Card className="gap-4 py-6 [--card-spacing:--spacing(6)]">
+    <Card id="avaliacao" className="scroll-mt-20 gap-4 py-6 [--card-spacing:--spacing(6)]">
       <CardHeader>
         <CardTitle className="text-lg font-semibold"><h2>Avaliação corporal rápida</h2></CardTitle>
         <CardDescription>

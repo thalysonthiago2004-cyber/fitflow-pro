@@ -9,6 +9,8 @@ const FEATURES = [
   { icon: ChartNoAxesCombined, label: "Evolução" },
 ];
 
+// Images are served as-is (`unoptimized`): they are small, and the image CDN
+// cannot fetch originals while the site sits behind Netlify's login.
 // Always dark, whatever the theme: the photos are low-key and the lime
 // headline needs the dark surface for contrast.
 export function AuthHero() {
@@ -16,10 +18,10 @@ export function AuthHero() {
     <section aria-label="FitFlow Pro" className="dark relative isolate overflow-hidden bg-background text-foreground">
       <div className="absolute inset-0 -z-10 grid grid-cols-2" aria-hidden>
         <div className="relative">
-          <Image src="/auth/hero-male.jpg" alt="" fill preload sizes="(min-width: 1024px) 28vw, 50vw" className="object-cover object-top" />
+          <Image src="/auth/hero-male.jpg" alt="" fill preload unoptimized sizes="(min-width: 1024px) 28vw, 50vw" className="object-cover object-top" />
         </div>
         <div className="relative">
-          <Image src="/auth/hero-female.jpg" alt="" fill preload sizes="(min-width: 1024px) 28vw, 50vw" className="object-cover object-top" />
+          <Image src="/auth/hero-female.jpg" alt="" fill preload unoptimized sizes="(min-width: 1024px) 28vw, 50vw" className="object-cover object-top" />
         </div>
       </div>
       <div className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/60 to-background/20" aria-hidden />

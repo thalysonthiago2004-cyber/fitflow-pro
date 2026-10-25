@@ -165,3 +165,18 @@ export async function getBodyProfile(studentId: string): Promise<BodyProfile> {
     birthDate: data?.birth_date ?? null,
   };
 }
+
+/** Latest measurement per student of a workspace: date and whether it came from a bioimpedance scale. */
+export async function getLatestMeasurements(workspaceId: string): Promise<Map<string, { measuredOn: string; source: MeasurementSource }>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("body_measurements")
+    .select("student_id, measured_on, source")
+    .eq("workspace_id", workspaceId)
+    .order("measured_on", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) fail("latest measurements", error);
+  const latest = new Map<string, { measuredOn: string; source: MeasurementSource }>();
+  for (const row of data) if (!latest.has(row.student_id)) latest.set(row.student_id, { measuredOn: row.measured_on, source: row.source });
+  return latest;
+}

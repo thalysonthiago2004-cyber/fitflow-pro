@@ -59,7 +59,7 @@ async function StudentContent({ params }: Pick<PageProps<"/students/[studentId]"
             </StatusBadge>
             <Link href={`/students/${student.userId}/progress`} className={buttonVariants({ variant: "outline", size: "sm" })}>
               <TrendingUp aria-hidden />
-              Evolução
+              Evolução e avaliação
             </Link>
           </>
         }

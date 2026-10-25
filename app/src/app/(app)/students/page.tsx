@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { ChevronRight, MailPlus, Search, UserPlus, Users } from "lucide-react";
+import { ChevronRight, MailPlus, Scale, Search, UserPlus, Users } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -194,10 +194,16 @@ export default function StudentsPage({ searchParams }: PageProps<"/students">) {
         title="Alunos"
         description="Convide, acompanhe e organize seus alunos."
         actions={
-          <Link href="/students/invite" className={buttonVariants()}>
-            <UserPlus aria-hidden />
-            Convidar aluno
-          </Link>
+          <>
+            <Link href="/assessments" className={buttonVariants({ variant: "outline" })}>
+              <Scale aria-hidden />
+              Avaliação
+            </Link>
+            <Link href="/students/invite" className={buttonVariants()}>
+              <UserPlus aria-hidden />
+              Convidar aluno
+            </Link>
+          </>
         }
       />
       <Suspense fallback={<StudentsSkeleton />}>

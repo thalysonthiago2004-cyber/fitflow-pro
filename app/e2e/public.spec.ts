@@ -23,7 +23,7 @@ test("home links to sign-up and login", async ({ page }) => {
 });
 
 test.describe("guest redirects", () => {
-  for (const path of ["/dashboard", "/settings", "/reset-password", "/students", "/students/invite", "/workouts", "/workouts/new", "/exercises", "/training", "/training/history", "/hydration", "/nutrition", "/foods", "/meals", "/progress"]) {
+  for (const path of ["/dashboard", "/settings", "/reset-password", "/students", "/students/invite", "/assessments", "/workouts", "/workouts/new", "/exercises", "/training", "/training/history", "/hydration", "/nutrition", "/foods", "/meals", "/progress"]) {
     test(`${path} redirects to login and keeps the destination`, async ({ page }) => {
       await page.goto(path);
       await expect(page).toHaveURL(`/login?next=${encodeURIComponent(path)}`);

@@ -336,6 +336,12 @@ test("@supabase the trainer's photo is shown to the student", async ({ browser, 
 
 test("@supabase quick body assessment uses the student record and tape measures", async ({ browser, page }) => {
   await login(page, trainer.email, trainer.password);
+  // The trainer finds it from the menu.
+  await page.getByRole("link", { name: "Avaliação" }).first().click();
+  await page.getByRole("link", { name: new RegExp(student.name) }).click();
+  await expect(page.getByRole("heading", { name: "Avaliação corporal rápida" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Balança de bioimpedância" })).toBeVisible();
+
   await page.goto("/students");
   await page.getByRole("link", { name: student.name }).first().click();
   await page.getByLabel("Sexo").selectOption("female");
