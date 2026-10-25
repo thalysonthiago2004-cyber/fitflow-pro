@@ -1,0 +1,200 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/*
+ * FitFlow Pro design tokens. Components consume these semantic tokens only.
+ * Contrast (WCAG 2.2) was checked for every text/background pairing:
+ * - Brand error #DC4545 is 4.22:1 on white, so light --destructive uses #C53030 (5.47:1).
+ * - Lime #B7F34A is never used as text on light surfaces (1.32:1); it always
+ *   carries dark text (#101411, 14.1:1).
+ * - Input borders are darker than --border to reach 3:1 against surfaces.
+ * - Dark theme uses lighter info/success/warning/error hues to stay >= 4.5:1,
+ *   including destructive text on its 20% tint (#fb8585: 4.81:1).
+ * - Status badges use foreground text on a tinted background (>= 14:1).
+ * - Night theme (default): text 16.8:1, muted 7.9:1, lime 13.8:1 on cards;
+ *   input borders 3.3:1 on dialogs.
+ */
+:root {
+  --background: #f5f7f4;
+  --foreground: #182019;
+  --card: #ffffff;
+  --card-foreground: #182019;
+  --popover: #ffffff;
+  --popover-foreground: #182019;
+  --primary: #101411;
+  --primary-foreground: #f5f7f4;
+  --secondary: #eaeee8;
+  --secondary-foreground: #182019;
+  --muted: #eef1ed;
+  --muted-foreground: #566157;
+  --accent: #eef1ed;
+  --accent-foreground: #182019;
+  --brand: #b7f34a;
+  --brand-foreground: #101411;
+  --destructive: #c53030;
+  --destructive-foreground: #ffffff;
+  --success: #218653;
+  --success-foreground: #ffffff;
+  --warning: #b45309;
+  --warning-foreground: #ffffff;
+  --info: #2563eb;
+  --info-foreground: #ffffff;
+  --border: #dde3dc;
+  --input: #859186;
+  --ring: #101411;
+  --chart-1: #101411;
+  --chart-2: #2563eb;
+  --chart-3: #218653;
+  --chart-4: #b45309;
+  --chart-5: #566157;
+  --radius: 0.875rem;
+  /* Meters: lime fails 3:1 on light surfaces, so the light fill is near-black. */
+  --meter-fill: #101411;
+  --meter-track: #dff5b5;
+  --glow: rgb(183 243 74 / 0.35);
+  --sidebar: #ffffff;
+  --sidebar-foreground: #182019;
+  --sidebar-primary: #101411;
+  --sidebar-primary-foreground: #f5f7f4;
+  --sidebar-accent: #eef1ed;
+  --sidebar-accent-foreground: #182019;
+  --sidebar-border: #dde3dc;
+  --sidebar-ring: #101411;
+}
+
+.dark {
+  /* "Night" — the default brand theme: near-black surfaces, lime as the one accent. */
+  --background: #0a0d0b;
+  --foreground: #f5f7f4;
+  --card: #121713;
+  --card-foreground: #f5f7f4;
+  --popover: #1a201b;
+  --popover-foreground: #f5f7f4;
+  --primary: #b7f34a;
+  --primary-foreground: #0a0d0b;
+  --secondary: #1a201b;
+  --secondary-foreground: #f5f7f4;
+  --muted: #1a201b;
+  --muted-foreground: #a3aea4;
+  --accent: #1a201b;
+  --accent-foreground: #f5f7f4;
+  --brand: #b7f34a;
+  --brand-foreground: #0a0d0b;
+  --destructive: #fb8585;
+  --destructive-foreground: #0a0d0b;
+  --success: #4ade80;
+  --success-foreground: #0a0d0b;
+  --warning: #fbbf24;
+  --warning-foreground: #0a0d0b;
+  --info: #60a5fa;
+  --info-foreground: #0a0d0b;
+  --border: #252d26;
+  --input: #66726a;
+  --ring: #b7f34a;
+  --chart-1: #b7f34a;
+  --chart-2: #3b82f6;
+  --chart-3: #4ade80;
+  --chart-4: #fbbf24;
+  --chart-5: #a3aea4;
+  --sidebar: #0d110e;
+  --sidebar-foreground: #f5f7f4;
+  --sidebar-primary: #b7f34a;
+  --sidebar-primary-foreground: #0a0d0b;
+  --sidebar-accent: #1a201b;
+  --sidebar-accent-foreground: #f5f7f4;
+  --sidebar-border: #1c231d;
+  --sidebar-ring: #b7f34a;
+  --glow: rgb(183 243 74 / 0.22);
+  --meter-fill: #b7f34a;
+  --meter-track: rgb(183 243 74 / 0.14);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Brand glow: a soft lime halo for the one or two elements per screen that
+   carry the main action or metric. Never on body text or every card. */
+@utility glow-brand {
+  box-shadow: 0 0 0 1px rgb(183 243 74 / 0.25), 0 8px 32px -8px var(--glow);
+}
+
+@utility bg-brand-glow {
+  background-image: radial-gradient(120% 90% at 100% 0%, rgb(183 243 74 / 0.16), transparent 55%);
+}
+

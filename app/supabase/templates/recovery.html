@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="pt-BR">
+  <body style="margin:0;padding:24px;background:#F5F7F4;font-family:Inter,Arial,sans-serif;color:#182019">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;margin:0 auto;background:#FFFFFF;border:1px solid #DDE3DC;border-radius:12px">
+      <tr>
+        <td style="padding:32px">
+          <p style="margin:0 0 24px;font-size:18px;font-weight:700;color:#101411">FitFlow Pro</p>
+          <h1 style="margin:0 0 12px;font-size:20px">Redefinir senha</h1>
+          <p style="margin:0 0 24px;font-size:15px;line-height:1.5;color:#566157">Recebemos um pedido para redefinir a senha da sua conta. Toque no botão abaixo para criar uma nova senha. O link vale por 1 hora.</p>
+          <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password"
+             style="display:inline-block;padding:12px 20px;background:#101411;color:#B7F34A;border-radius:8px;font-size:15px;font-weight:600;text-decoration:none">Criar nova senha</a>
+          <p style="margin:24px 0 0;font-size:13px;line-height:1.5;color:#566157">Se você não pediu a redefinição, ignore este e-mail. Sua senha continua a mesma.</p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

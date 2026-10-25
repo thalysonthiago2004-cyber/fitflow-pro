@@ -1,0 +1,9 @@
+# Netlify builds the Next.js app with its OpenNext-based runtime (detected
+# automatically). NEXT_PUBLIC_* variables are set in the site settings and
+# inlined at build time, so changing them requires a new deploy.
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "24"
