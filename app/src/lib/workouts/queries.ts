@@ -13,7 +13,13 @@ export type Exercise = {
   equipment: Equipment;
   instructions: string | null;
   videoUrl: string | null;
+  /** Uploaded video in the `exercise-videos` bucket. */
+  videoPath: string | null;
+  /** Short-lived signed URL for videoPath, when loaded for display. */
+  videoSrc: string | null;
   isGlobal: boolean;
+  /** A global exercise with this workspace's own instructions or video. */
+  customized: boolean;
 };
 
 export type PlanSummary = {
@@ -31,7 +37,7 @@ type PrescriptionBase = {
   id: string;
   position: number;
   notes: string | null;
-  exercise: Pick<Exercise, "id" | "name" | "muscleGroup" | "equipment" | "instructions" | "videoUrl">;
+  exercise: Pick<Exercise, "id" | "name" | "muscleGroup" | "equipment" | "instructions" | "videoUrl" | "videoSrc">;
 };
 
 export type StrengthPrescription = PrescriptionBase & {
@@ -39,6 +45,10 @@ export type StrengthPrescription = PrescriptionBase & {
   sets: number;
   repsMin: number;
   repsMax: number | null;
+  /** Repetitions for each set (e.g. 12/10/8); null when every set shares repsMin–repsMax. */
+  repsPerSet: number[] | null;
+  /** Items sharing a group are a bi-set, tri-set or circuit. */
+  supersetGroup: string | null;
   loadKg: number | null;
   restSeconds: number | null;
 };
@@ -122,19 +132,54 @@ type ExerciseRow = {
   equipment: Equipment;
   instructions: string | null;
   video_url: string | null;
+  video_path: string | null;
 };
 
-function toExercise(row: ExerciseRow): Exercise {
+type Customization = { instructions: string | null; video_url: string | null; video_path: string | null };
+
+const EXERCISE_COLUMNS = "id, workspace_id, name, muscle_group, equipment, instructions, video_url, video_path";
+
+// A customization replaces the catalog's instructions and video as a whole, so
+// a trainer's own video never shows next to the catalog's instructions by accident.
+function toExercise(row: ExerciseRow, custom?: Customization): Exercise {
+  const source = custom ?? row;
   return {
     id: row.id,
     workspaceId: row.workspace_id,
     name: row.name,
     muscleGroup: row.muscle_group,
     equipment: row.equipment,
-    instructions: row.instructions,
-    videoUrl: row.video_url,
+    instructions: source.instructions,
+    videoUrl: source.video_url,
+    videoPath: source.video_path,
+    videoSrc: null,
     isGlobal: row.workspace_id === null,
+    customized: custom !== undefined,
   };
+}
+
+/** Customizations visible to the caller (RLS: their workspace) for these exercises. */
+async function customizationsFor(ids: string[]): Promise<Map<string, Customization>> {
+  if (ids.length === 0) return new Map();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("exercise_customizations")
+    .select("exercise_id, instructions, video_url, video_path")
+    .in("exercise_id", [...new Set(ids)]);
+  if (error) fail("customizations", error);
+  return new Map(data.map((c) => [c.exercise_id, c]));
+}
+
+/** Fills videoSrc with signed URLs (1 h) for exercises that have an uploaded video. */
+async function withVideoUrls<T extends Pick<Exercise, "videoPath" | "videoSrc">>(exercises: T[]): Promise<T[]> {
+  const paths = [...new Set(exercises.flatMap((e) => (e.videoPath ? [e.videoPath] : [])))];
+  if (paths.length === 0) return exercises;
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage.from("exercise-videos").createSignedUrls(paths, 60 * 60);
+  if (error) fail("exercise videos", error);
+  const byPath = new Map(data.flatMap((s) => (s.path && s.signedUrl ? [[s.path, s.signedUrl] as const] : [])));
+  for (const exercise of exercises) exercise.videoSrc = exercise.videoPath ? (byPath.get(exercise.videoPath) ?? null) : null;
+  return exercises;
 }
 
 const num = (value: number | string | null) => (value === null ? null : Number(value));
@@ -147,23 +192,27 @@ export async function listExercises(): Promise<Exercise[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("exercises")
-    .select("id, workspace_id, name, muscle_group, equipment, instructions, video_url")
+    .select(EXERCISE_COLUMNS)
     .eq("archived", false)
     .order("name");
   if (error) fail("exercises", error);
-  return data.map(toExercise);
+  const custom = await customizationsFor(data.filter((e) => e.workspace_id === null).map((e) => e.id));
+  return data.map((row) => toExercise(row, custom.get(row.id)));
 }
 
 export async function getExercise(id: string): Promise<Exercise | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("exercises")
-    .select("id, workspace_id, name, muscle_group, equipment, instructions, video_url")
+    .select(EXERCISE_COLUMNS)
     .eq("id", id)
     .eq("archived", false)
     .maybeSingle();
   if (error) fail("exercise", error);
-  return data ? toExercise(data) : null;
+  if (!data) return null;
+  const custom = data.workspace_id === null ? await customizationsFor([data.id]) : new Map<string, Customization>();
+  const [exercise] = await withVideoUrls([toExercise(data, custom.get(data.id))]);
+  return exercise;
 }
 
 async function profileNames(ids: string[]): Promise<Map<string, string>> {
@@ -219,19 +268,23 @@ async function loadSessions(planIds: string[]): Promise<Map<string, SessionDetai
     ? await supabase
         .from("session_exercises")
         .select(
-          "id, session_id, position, kind, sets, reps_min, reps_max, load_kg, rest_seconds, notes, cardio_mode, duration_minutes, distance_km, intensity, hr_min, hr_max, speed_kmh, incline_pct, rounds, work_seconds, created_at, exercises(id, workspace_id, name, muscle_group, equipment, instructions, video_url)",
+          "id, session_id, position, kind, sets, reps_min, reps_max, reps_per_set, superset_group, load_kg, rest_seconds, notes, cardio_mode, duration_minutes, distance_km, intensity, hr_min, hr_max, speed_kmh, incline_pct, rounds, work_seconds, created_at, exercises(id, workspace_id, name, muscle_group, equipment, instructions, video_url, video_path)",
         )
         .in("session_id", sessionIds)
         .order("position")
         .order("created_at")
     : { data: [], error: null };
   if (itemsError) fail("session exercises", itemsError);
+  const custom = await customizationsFor(items.flatMap((i) => (i.exercises?.workspace_id === null ? [i.exercises.id] : [])));
+  // One Exercise object per item, so signed URLs can be filled in place.
+  const exerciseByItem = new Map(items.filter((i) => i.exercises).map((i) => [i.id, toExercise(i.exercises!, custom.get(i.exercises!.id))]));
+  await withVideoUrls([...exerciseByItem.values()]);
 
   for (const session of sessions) {
     const exercises: Prescription[] = items
       .filter((item) => item.session_id === session.id && item.exercises)
       .map((item): Prescription => {
-        const base = { id: item.id, position: item.position, notes: item.notes, exercise: toExercise(item.exercises!) };
+        const base = { id: item.id, position: item.position, notes: item.notes, exercise: exerciseByItem.get(item.id)! };
         if (item.kind === "cardio") {
           return {
             ...base,
@@ -258,6 +311,8 @@ async function loadSessions(planIds: string[]): Promise<Map<string, SessionDetai
           sets: item.sets!,
           repsMin: item.reps_min!,
           repsMax: item.reps_max,
+          repsPerSet: item.reps_per_set,
+          supersetGroup: item.superset_group,
           loadKg: num(item.load_kg),
           restSeconds: item.rest_seconds,
         };

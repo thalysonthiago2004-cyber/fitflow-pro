@@ -1,6 +1,6 @@
 import { formatNumber } from "@/lib/format";
 import type { CardioIntensity, CardioMode, Equipment, MuscleGroup, PlanStatus } from "@/lib/supabase/database.types";
-import type { CardioTarget, Prescription } from "./queries";
+import type { CardioTarget, Prescription, StrengthPrescription } from "./queries";
 
 export const MUSCLE_GROUP_LABELS: Record<MuscleGroup, string> = {
   chest: "Peito",
@@ -57,6 +57,38 @@ export function formatReps(min: number, max: number | null): string {
   return max && max !== min ? `${min}–${max}` : `${min}`;
 }
 
+/** "12/10/8" when each set has its own target, otherwise the shared range. */
+export function formatSetReps(item: Pick<StrengthPrescription, "repsMin" | "repsMax" | "repsPerSet">): string {
+  return item.repsPerSet ? item.repsPerSet.join("/") : formatReps(item.repsMin, item.repsMax);
+}
+
+/** Target repetitions for one set (1-based), used as the logger's placeholder. */
+export function repsForSet(item: Pick<StrengthPrescription, "repsMin" | "repsMax" | "repsPerSet">, setNumber: number): string {
+  const own = item.repsPerSet?.[setNumber - 1];
+  return own !== undefined ? String(own) : formatReps(item.repsMin, item.repsMax);
+}
+
+/** "Bi-set", "Tri-set" or "Circuito" for a group of this size. */
+export function supersetLabel(size: number): string {
+  return size === 2 ? "Bi-set" : size === 3 ? "Tri-set" : "Circuito";
+}
+
+/**
+ * Splits a session's items into display blocks: consecutive strength items
+ * sharing a superset group become one block, everything else stands alone.
+ */
+export function groupSupersets<T extends Prescription>(items: T[]): T[][] {
+  const blocks: T[][] = [];
+  for (const item of items) {
+    const group = item.kind === "strength" ? item.supersetGroup : null;
+    const last = blocks.at(-1);
+    const lastItem = last?.at(-1);
+    if (group && last && lastItem?.kind === "strength" && lastItem.supersetGroup === group) last.push(item);
+    else blocks.push([item]);
+  }
+  return blocks;
+}
+
 export function formatRest(seconds: number | null): string | null {
   if (seconds === null) return null;
   if (seconds < 60) return `${seconds} s`;
@@ -93,12 +125,12 @@ export function formatCardio(c: CardioTarget): string {
   return parts.join(" · ");
 }
 
-/** One-line target for any prescribed item. */
-export function formatPrescription(item: Prescription): string {
+/** One-line target for any prescribed item. Inside a superset, only the group's rest is shown, once. */
+export function formatPrescription(item: Prescription, { withRest = true }: { withRest?: boolean } = {}): string {
   if (item.kind === "cardio") return formatCardio(item.cardio);
-  const rest = formatRest(item.restSeconds);
+  const rest = withRest ? formatRest(item.restSeconds) : null;
   return [
-    `${item.sets} × ${formatReps(item.repsMin, item.repsMax)}`,
+    `${item.sets} × ${formatSetReps(item)}`,
     item.loadKg !== null ? `${formatNumber(item.loadKg, 2)} kg` : null,
     rest ? `descanso ${rest}` : null,
   ].filter(Boolean).join(" · ");

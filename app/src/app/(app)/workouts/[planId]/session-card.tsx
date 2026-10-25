@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp, HeartPulse, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, HeartPulse, Layers, Link2, Pencil, Plus, Trash2, Unlink2, X } from "lucide-react";
 import { useActionState, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { ConfirmAction } from "@/components/confirm-action";
@@ -10,13 +10,15 @@ import { SubmitButton } from "@/components/forms/submit-button";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { initialFormState } from "@/lib/auth/schemas";
-import { MUSCLE_GROUP_LABELS, formatPrescription, formatWeekdays } from "@/lib/workouts/labels";
+import { MUSCLE_GROUP_LABELS, formatPrescription, formatRest, formatWeekdays, groupSupersets, supersetLabel } from "@/lib/workouts/labels";
 import type { Exercise, Prescription, SessionDetail } from "@/lib/workouts/queries";
 import {
   addCardio,
   addPrescription,
   deletePrescription,
   deleteSession,
+  joinPrevious,
+  leaveSuperset,
   movePrescription,
   moveSession,
   updateCardio,
@@ -93,9 +95,29 @@ export function SessionCard({ session, index, total, exercises }: SessionCardPro
         <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">Nenhum exercício neste treino ainda.</p>
       ) : (
         <ol className="grid gap-2">
-          {session.exercises.map((item, i) => (
-            <PrescriptionRow key={item.id} item={item} index={i} total={session.exercises.length} />
-          ))}
+          {groupSupersets(session.exercises).map((block) => {
+            const rows = block.map((item) => {
+              const index = session.exercises.indexOf(item);
+              const previous = session.exercises[index - 1];
+              const grouped = block.length > 1;
+              // Joinable: two strength items in a row that are not already together.
+              const canJoin = item.kind === "strength" && previous?.kind === "strength" && !(grouped && block.indexOf(item) > 0);
+              return <PrescriptionRow key={item.id} item={item} index={index} total={session.exercises.length} canJoin={canJoin} grouped={grouped} />;
+            });
+            if (block.length === 1) return rows;
+            const last = block.at(-1)!;
+            const rest = last.kind === "strength" ? formatRest(last.restSeconds) : null;
+            return (
+              <li key={block[0].id} className="grid gap-2 rounded-xl border-2 border-foreground/15 bg-muted/40 p-2 sm:p-3">
+                <p className="flex flex-wrap items-center gap-2 px-1 text-sm">
+                  <Layers className="size-4" aria-hidden />
+                  <span className="font-semibold">{supersetLabel(block.length)}</span>
+                  <span className="text-muted-foreground">Em sequência, sem pausa{rest ? ` · descanso ${rest} ao fim da volta` : ""}</span>
+                </p>
+                <ol className="grid gap-2">{rows}</ol>
+              </li>
+            );
+          })}
         </ol>
       )}
 
@@ -139,13 +161,13 @@ function SessionEditForm({ session, onDone }: { session: SessionDetail; onDone: 
   );
 }
 
-function PrescriptionRow({ item, index, total }: { item: Prescription; index: number; total: number }) {
+function PrescriptionRow({ item, index, total, canJoin, grouped }: { item: Prescription; index: number; total: number; canJoin: boolean; grouped: boolean }) {
   const [editing, setEditing] = useState(false);
   const mover = useMover();
-  const summary = formatPrescription(item);
+  const summary = formatPrescription(item, { withRest: !grouped });
 
   return (
-    <li className="grid gap-3 rounded-lg border p-3">
+    <li className="grid gap-3 rounded-lg border bg-card p-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold tabular-nums" aria-hidden>{index + 1}</span>
@@ -170,6 +192,16 @@ function PrescriptionRow({ item, index, total }: { item: Prescription; index: nu
           <Button variant="ghost" size="icon" aria-label={`Mover ${item.exercise.name} para baixo`} disabled={index === total - 1 || mover.pending} onClick={() => mover.run(() => movePrescription(item.id, "down"))}>
             <ArrowDown aria-hidden />
           </Button>
+          {canJoin && (
+            <Button variant="ghost" size="icon" aria-label={`Juntar ${item.exercise.name} ao exercício anterior (bi-set)`} title="Juntar ao anterior (bi-set)" disabled={mover.pending} onClick={() => mover.run(() => joinPrevious(item.id))}>
+              <Link2 aria-hidden />
+            </Button>
+          )}
+          {grouped && (
+            <Button variant="ghost" size="icon" aria-label={`Separar ${item.exercise.name} do grupo`} title="Separar do grupo" disabled={mover.pending} onClick={() => mover.run(() => leaveSuperset(item.id))}>
+              <Unlink2 aria-hidden />
+            </Button>
+          )}
           <Button variant="ghost" size="icon" aria-label={`Editar ${item.exercise.name}`} aria-expanded={editing} onClick={() => setEditing((v) => !v)}>
             {editing ? <X aria-hidden /> : <Pencil aria-hidden />}
           </Button>

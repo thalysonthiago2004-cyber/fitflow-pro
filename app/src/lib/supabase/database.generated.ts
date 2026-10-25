@@ -158,6 +158,61 @@ export type Database = {
           },
         ]
       }
+      exercise_customizations: {
+        Row: {
+          created_at: string
+          exercise_id: string
+          instructions: string | null
+          updated_at: string
+          updated_by: string | null
+          video_path: string | null
+          video_url: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          exercise_id: string
+          instructions?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          video_path?: string | null
+          video_url?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          exercise_id?: string
+          instructions?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          video_path?: string | null
+          video_url?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_customizations_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_customizations_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_customizations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercises: {
         Row: {
           archived: boolean
@@ -169,6 +224,7 @@ export type Database = {
           muscle_group: Database["public"]["Enums"]["muscle_group"]
           name: string
           updated_at: string
+          video_path: string | null
           video_url: string | null
           workspace_id: string | null
         }
@@ -182,6 +238,7 @@ export type Database = {
           muscle_group: Database["public"]["Enums"]["muscle_group"]
           name: string
           updated_at?: string
+          video_path?: string | null
           video_url?: string | null
           workspace_id?: string | null
         }
@@ -195,6 +252,7 @@ export type Database = {
           muscle_group?: Database["public"]["Enums"]["muscle_group"]
           name?: string
           updated_at?: string
+          video_path?: string | null
           video_url?: string | null
           workspace_id?: string | null
         }
@@ -666,11 +724,13 @@ export type Database = {
           position: number
           reps_max: number | null
           reps_min: number | null
+          reps_per_set: number[] | null
           rest_seconds: number | null
           rounds: number | null
           session_id: string
           sets: number | null
           speed_kmh: number | null
+          superset_group: string | null
           updated_at: string
           work_seconds: number | null
           workspace_id: string
@@ -692,11 +752,13 @@ export type Database = {
           position?: number
           reps_max?: number | null
           reps_min?: number | null
+          reps_per_set?: number[] | null
           rest_seconds?: number | null
           rounds?: number | null
           session_id: string
           sets?: number | null
           speed_kmh?: number | null
+          superset_group?: string | null
           updated_at?: string
           work_seconds?: number | null
           workspace_id: string
@@ -718,11 +780,13 @@ export type Database = {
           position?: number
           reps_max?: number | null
           reps_min?: number | null
+          reps_per_set?: number[] | null
           rest_seconds?: number | null
           rounds?: number | null
           session_id?: string
           sets?: number | null
           speed_kmh?: number | null
+          superset_group?: string | null
           updated_at?: string
           work_seconds?: number | null
           workspace_id?: string

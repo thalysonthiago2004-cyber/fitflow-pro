@@ -1,16 +1,25 @@
 import { ExternalLink } from "lucide-react";
 import { toEmbedUrl } from "@/lib/workouts/video";
 
-type Props = { name: string; instructions: string | null; videoUrl: string | null };
+type Props = { name: string; instructions: string | null; videoUrl: string | null; videoSrc?: string | null };
 
-// Demonstration media and instructions. Only YouTube/Vimeo links are embedded
-// (sandboxed); other links open in a new tab.
-export function ExerciseDemo({ name, instructions, videoUrl }: Props) {
+// Demonstration media and instructions. An uploaded video (signed URL) comes
+// first; YouTube/Vimeo links are embedded (sandboxed); other links open in a new tab.
+export function ExerciseDemo({ name, instructions, videoUrl, videoSrc = null }: Props) {
   const embed = toEmbedUrl(videoUrl);
 
   return (
     <div className="grid gap-4">
-      {embed ? (
+      {videoSrc ? (
+        <video
+          src={videoSrc}
+          controls
+          playsInline
+          preload="metadata"
+          aria-label={`Demonstração: ${name}`}
+          className="aspect-video w-full rounded-lg border bg-black object-contain"
+        />
+      ) : embed ? (
         <div className="aspect-video overflow-hidden rounded-lg border bg-muted">
           <iframe
             src={embed}

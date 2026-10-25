@@ -112,9 +112,9 @@ test("@supabase trainer builds and publishes a workout plan", async ({ page }) =
   for (const [exercise, load] of [["Supino reto com barra", "40"], ["Agachamento livre", "60,5"]] as const) {
     await session.getByRole("button", { name: "Adicionar exercício" }).click();
     await session.getByLabel("Exercício", { exact: true }).selectOption({ label: exercise });
-    await session.getByLabel("Séries").last().fill("2");
-    await session.getByLabel("Reps mín.").last().fill("8");
-    await session.getByLabel("Reps máx.").last().fill("12");
+    await session.getByLabel("Séries", { exact: true }).last().selectOption("2");
+    await session.getByLabel("Reps mín.").last().selectOption("8");
+    await session.getByLabel("Reps máx.").last().selectOption("12");
     await session.getByLabel("Carga (kg)").last().fill(load);
     await session.getByRole("button", { name: "Adicionar ao treino" }).click();
     await expect(session.locator("ol").getByText(exercise).filter({ visible: true })).toBeVisible();
@@ -418,7 +418,7 @@ test("@supabase trainer prescribes cardio and the student records it", async ({ 
   // Intervals swap the duration for rounds of work and rest.
   await session.getByLabel("Atividade de cardio").selectOption({ label: "Air bike" });
   await session.getByText("Intervalado", { exact: true }).click();
-  await session.getByLabel("Séries").fill("6");
+  await session.getByLabel("Séries", { exact: true }).fill("6");
   await session.getByLabel("Estímulo (s)").fill("30");
   await session.getByLabel("Descanso (s)").fill("60");
   await session.getByLabel("Intensidade").selectOption("vigorous");
@@ -455,4 +455,95 @@ test("@supabase trainer prescribes cardio and the student records it", async ({ 
   await page.getByRole("region", { name: "Treino A" }).getByRole("button", { name: "Remover Esteira" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Remover" }).click();
   await expect(page.getByText(/Já existem treinos registrados aqui/).filter({ visible: true })).toBeVisible();
+});
+
+// A short real WebM recorded from a canvas, so storage receives a playable file.
+async function webm(page: Page): Promise<{ name: string; mimeType: string; buffer: Buffer }> {
+  const base64 = await page.evaluate(async () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 160;
+    canvas.height = 120;
+    const context = canvas.getContext("2d")!;
+    const recorder = new MediaRecorder(canvas.captureStream(15), { mimeType: "video/webm" });
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = (event) => chunks.push(event.data);
+    const stopped = new Promise((resolve) => (recorder.onstop = resolve));
+    recorder.start();
+    for (let frame = 0; frame < 10; frame++) {
+      context.fillStyle = `hsl(${frame * 36}, 60%, 40%)`;
+      context.fillRect(0, 0, 160, 120);
+      await new Promise((resolve) => setTimeout(resolve, 70));
+    }
+    recorder.stop();
+    await stopped;
+    const bytes = new Uint8Array(await new Blob(chunks, { type: "video/webm" }).arrayBuffer());
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary);
+  });
+  return { name: "demo.webm", mimeType: "video/webm", buffer: Buffer.from(base64, "base64") };
+}
+
+test("@supabase bi-set with per-set reps and the trainer's own video", async ({ browser, page }) => {
+  await login(page, trainer.email, trainer.password);
+
+  // The trainer's version of a catalog exercise: own instructions and an uploaded video.
+  await page.goto("/exercises");
+  await page.getByRole("link", { name: /Tríceps francês com halter/ }).first().click();
+  await page.getByLabel("Instruções de execução").fill("Cotovelos fixos apontando para o teto.");
+  await page.getByRole("button", { name: "Salvar para meus alunos" }).click();
+  await expect(page.getByText("Personalização salva. Seus alunos já veem esta versão.").filter({ visible: true })).toBeVisible();
+  await page.getByLabel("Vídeo de demonstração").setInputFiles(await webm(page));
+  await expect(page.getByText("Vídeo enviado. Seus alunos já podem assistir.").filter({ visible: true })).toBeVisible();
+  await expect(page.locator("video")).toHaveAttribute("src", /\/storage\/v1\/object\/sign\/exercise-videos\//);
+
+  // Bi-set: French press with a 12/10/8 pyramid, then bench dips.
+  await page.goto(planUrl);
+  const session = page.getByRole("region", { name: "Treino A" });
+  await session.getByRole("button", { name: "Adicionar exercício" }).click();
+  await session.getByLabel("Exercício", { exact: true }).selectOption({ label: "Tríceps francês com halter" });
+  await session.getByLabel("Séries", { exact: true }).last().selectOption("3");
+  await session.getByText("Diferentes por série", { exact: true }).click();
+  await session.getByLabel("Série 1", { exact: true }).selectOption("12");
+  await session.getByLabel("Série 2", { exact: true }).selectOption("10");
+  await session.getByLabel("Série 3", { exact: true }).selectOption("8");
+  await session.getByRole("button", { name: "Adicionar ao treino" }).click();
+  await expect(session.getByText("3 × 12/10/8").filter({ visible: true })).toBeVisible();
+
+  await session.getByLabel("Exercício", { exact: true }).selectOption({ label: "Mergulho no banco" });
+  await session.getByLabel("Séries", { exact: true }).last().selectOption("3");
+  await session.getByLabel("Reps mín.").last().selectOption("15");
+  await session.getByLabel("Descanso (s)").last().fill("45");
+  await session.getByRole("button", { name: "Adicionar ao treino" }).click();
+  await expect(session.locator("ol").getByText("Mergulho no banco").filter({ visible: true })).toBeVisible();
+  await session.getByRole("button", { name: "Fechar" }).click();
+
+  await session.getByRole("button", { name: "Juntar Mergulho no banco ao exercício anterior (bi-set)" }).click();
+  await expect(session.getByText("Bi-set", { exact: true })).toBeVisible();
+  await expect(session.getByText("Em sequência, sem pausa · descanso 45 s ao fim da volta")).toBeVisible();
+
+  const studentPage = await newPage(browser, "mobile");
+  await login(studentPage, student.email, student.password);
+  await studentPage.goto("/training");
+  await studentPage.getByRole("link", { name: /Treino A/ }).first().click();
+  await expect(studentPage.getByText("Bi-set: Tríceps francês com halter + Mergulho no banco")).toBeVisible();
+  // The exercise's own card (the innermost list item) inside the bi-set.
+  const frenchCard = studentPage.getByRole("listitem").filter({ has: studentPage.getByRole("heading", { name: "Tríceps francês com halter" }) }).last();
+  await frenchCard.getByText("Como executar").click();
+  await expect(studentPage.getByText("Cotovelos fixos apontando para o teto.").first()).toBeVisible();
+  await expect(studentPage.locator("video").first()).toHaveAttribute("src", /exercise-videos/);
+
+  await studentPage.getByRole("button", { name: "Iniciar treino" }).click();
+  await expect(studentPage.getByText("Volta 1", { exact: true })).toBeVisible();
+  await expect(studentPage.getByLabel("Repetições — Tríceps francês com halter, série 2")).toHaveAttribute("placeholder", "10");
+
+  // Inside the round there is no rest; it starts after the last exercise.
+  await studentPage.getByRole("button", { name: "Concluir Tríceps francês com halter, série 1" }).click();
+  await expect(studentPage.getByRole("button", { name: "Desmarcar Tríceps francês com halter, série 1" })).toBeEnabled();
+  await expect(studentPage.getByRole("status").filter({ hasText: "Descanso" })).toHaveCount(0);
+  await studentPage.getByRole("button", { name: "Concluir Mergulho no banco, série 1" }).click();
+  await expect(studentPage.getByRole("status").filter({ hasText: "Descanso" })).toBeVisible();
+  await studentPage.getByRole("button", { name: "Descartar treino" }).click();
+  await studentPage.getByRole("alertdialog").getByRole("button", { name: /Descartar/ }).click();
+  await studentPage.context().close();
 });

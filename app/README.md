@@ -15,6 +15,7 @@ Stack: Next.js 16 (App Router, Cache Components, Partial Prefetching), React 19,
 | 5 | Foods with mandatory source, meal plans, meals and items, nutrient estimates | Done |
 | 6 | Body measurements, weight chart, weekly workouts, personal records, workout calorie estimate | Done |
 | 6+ | Trainer photo (shown to students), quick body assessment (tape-measure estimates + bioimpedance-scale entry), private before/after photos | Done |
+| 6+ | Cardio blocks (continuous/intervals) in workouts; supersets (bi-set, tri-set, circuit); per-set repetitions; uploaded exercise videos and per-workspace customization of catalog exercises | Done |
 | 7 | Billing, production hardening | Baseline security headers only — billing needs a provider decision |
 
 All phases were verified against a local Postgres + PostgREST stack and, on 2026-10-25, against the beta Supabase project (`fitflow-pro`, São Paulo): migrations applied, generated types in use, and the full trainer/student E2E journeys passing (see [Testing](#testing)).
@@ -28,6 +29,7 @@ All phases were verified against a local Postgres + PostgREST stack and, on 2026
 - **Foods** start empty on purpose: nutrient values are entered by staff with a source. Importing an official table (e.g. TACO) is a future task.
 - **Body assessment** values (body fat by the U.S. Navy circumference method, BMR by Mifflin–St Jeor) are calculated on the fly and labeled as estimates; they are never stored. Readings typed from a bioimpedance scale are stored as entered, tagged `source = 'bioimpedance'`.
 - **Photos** are resized and re-encoded to JPEG in the browser (which also strips EXIF/GPS) before upload. Avatars are public (`avatars` bucket); progress photos are private (`progress-photos` bucket, signed URLs valid for 1 h). The local test backend has no storage API, so uploads only work against a Supabase project.
+- **Exercise videos** are uploaded from the browser straight to the private `exercise-videos` bucket through a one-time signed URL (max 50 MB, MP4/MOV/WebM) and played through 1-hour signed URLs. Catalog exercises are never edited; a workspace customization replaces their instructions and video for that workspace only.
 - **Calorie estimates** for workouts use one MET value (3.5, resistance training) and require a recorded weight.
 - **Content-Security-Policy** is not set yet (needs nonces for Next's inline scripts).
 - **Monitoring** (e.g. error tracking) is not configured.

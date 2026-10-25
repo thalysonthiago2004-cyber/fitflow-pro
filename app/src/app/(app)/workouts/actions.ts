@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -31,6 +32,8 @@ function readPrescription(formData: FormData) {
     sets: formString(formData, "sets"),
     repsMin: formString(formData, "repsMin"),
     repsMax: formString(formData, "repsMax"),
+    repsMode: formString(formData, "repsMode"),
+    repsPerSet: formData.getAll("repsPerSet").map(String).join(","),
     loadKg: formString(formData, "loadKg"),
     restSeconds: formString(formData, "restSeconds"),
     notes: formString(formData, "notes"),
@@ -277,6 +280,7 @@ export async function addPrescription(sessionId: string, _prev: FormState, formD
     sets: parsed.data.sets,
     reps_min: parsed.data.repsMin,
     reps_max: parsed.data.repsMax,
+    reps_per_set: parsed.data.repsPerSet,
     load_kg: parsed.data.loadKg,
     rest_seconds: parsed.data.restSeconds,
     notes: parsed.data.notes,
@@ -300,6 +304,7 @@ export async function updatePrescription(itemId: string, _prev: FormState, formD
       sets: parsed.data.sets,
       reps_min: parsed.data.repsMin,
       reps_max: parsed.data.repsMax,
+      reps_per_set: parsed.data.repsPerSet,
       load_kg: parsed.data.loadKg,
       rest_seconds: parsed.data.restSeconds,
       notes: parsed.data.notes,
@@ -384,9 +389,10 @@ export async function deletePrescription(itemId: string): Promise<ActionResult> 
     .delete()
     .eq("id", itemId)
     .eq("workspace_id", ctx.user.workspace.id)
-    .select("id");
+    .select("id, session_id");
   if (error || !data?.length) return { ok: false, message: GENERIC_DB_ERROR };
 
+  await tidySupersets(ctx.supabase, data[0].session_id);
   refresh();
   return { ok: true };
 }
@@ -405,6 +411,70 @@ export async function movePrescription(itemId: string, direction: "up" | "down")
   if (!siblings || !(await moveInList(ctx.supabase, "session_exercises", siblings, itemId, direction))) {
     return { ok: false, message: GENERIC_DB_ERROR };
   }
+  await tidySupersets(ctx.supabase, item.session_id);
+  refresh();
+  return { ok: true };
+}
+
+// Supersets -------------------------------------------------------------------
+// A superset is a run of consecutive items sharing a group id. After any
+// reorder or removal, items left alone in their group are released.
+
+async function tidySupersets(supabase: Awaited<ReturnType<typeof createClient>>, sessionId: string) {
+  const { data: items } = await supabase
+    .from("session_exercises")
+    .select("id, superset_group")
+    .eq("session_id", sessionId)
+    .order("position")
+    .order("created_at");
+  if (!items) return;
+  const alone = items.filter(
+    (item, i) => item.superset_group && items[i - 1]?.superset_group !== item.superset_group && items[i + 1]?.superset_group !== item.superset_group,
+  );
+  if (alone.length) await supabase.from("session_exercises").update({ superset_group: null }).in("id", alone.map((i) => i.id));
+}
+
+/** Joins an exercise to the one right above it, forming or extending a bi-set/tri-set. */
+export async function joinPrevious(itemId: string): Promise<ActionResult> {
+  const ctx = await staffContext(itemId);
+  if (!ctx) return { ok: false, message: GENERIC_DB_ERROR };
+  const { data: item } = await ctx.supabase.from("session_exercises").select("session_id").eq("id", itemId).maybeSingle();
+  if (!item) return { ok: false, message: GENERIC_DB_ERROR };
+  const { data: items } = await ctx.supabase
+    .from("session_exercises")
+    .select("id, kind, superset_group")
+    .eq("session_id", item.session_id)
+    .order("position")
+    .order("created_at");
+  const index = items?.findIndex((i) => i.id === itemId) ?? -1;
+  const previous = index > 0 ? items![index - 1] : undefined;
+  if (!previous || items![index].kind !== "strength" || previous.kind !== "strength") {
+    return { ok: false, message: "Só exercícios de musculação seguidos podem formar um bi-set." };
+  }
+  const group = previous.superset_group ?? items![index].superset_group ?? randomUUID();
+  const { error } = await ctx.supabase
+    .from("session_exercises")
+    .update({ superset_group: group })
+    .in("id", [previous.id, itemId])
+    .eq("workspace_id", ctx.user.workspace.id);
+  if (error) return { ok: false, message: GENERIC_DB_ERROR };
+  await tidySupersets(ctx.supabase, item.session_id);
+  refresh();
+  return { ok: true };
+}
+
+/** Takes an exercise out of its superset. */
+export async function leaveSuperset(itemId: string): Promise<ActionResult> {
+  const ctx = await staffContext(itemId);
+  if (!ctx) return { ok: false, message: GENERIC_DB_ERROR };
+  const { data, error } = await ctx.supabase
+    .from("session_exercises")
+    .update({ superset_group: null })
+    .eq("id", itemId)
+    .eq("workspace_id", ctx.user.workspace.id)
+    .select("session_id");
+  if (error || !data?.length) return { ok: false, message: GENERIC_DB_ERROR };
+  await tidySupersets(ctx.supabase, data[0].session_id);
   refresh();
   return { ok: true };
 }

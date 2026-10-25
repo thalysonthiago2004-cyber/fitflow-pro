@@ -67,11 +67,14 @@ const requiredInt = (label: string, min: number, max: number) =>
 const optionalInt = (label: string, min: number, max: number) =>
   z.preprocess(blankToUndefined, boundedInt(label, min, max).optional());
 
+// repsPerSet arrives as "12,10,8" (one value per set) when repsMode is "perSet".
 export const prescriptionSchema = z
   .object({
     sets: requiredInt("as séries", 1, 20),
-    repsMin: requiredInt("as repetições", 1, 100),
-    repsMax: optionalInt("o máximo de repetições", 1, 100),
+    repsMode: z.enum(["same", "perSet"]).catch("same"),
+    repsMin: z.string().optional(),
+    repsMax: z.string().optional(),
+    repsPerSet: z.string().optional(),
     loadKg: z.preprocess(
       parseDecimal,
       z.number({ error: "Informe a carga em kg, ex.: 22,5." }).min(0, "A carga não pode ser negativa.").max(1000, "Carga acima do limite.").optional(),
@@ -79,14 +82,38 @@ export const prescriptionSchema = z
     restSeconds: optionalInt("o descanso", 0, 900),
     notes: optionalText(500, "As observações podem ter no máximo 500 caracteres."),
   })
-  .refine((data) => data.repsMax === undefined || data.repsMax >= data.repsMin, {
-    message: "O máximo precisa ser maior ou igual ao mínimo.",
-    path: ["repsMax"],
+  .transform((data, ctx) => {
+    const fail = (path: string, message: string) => {
+      ctx.addIssue({ code: "custom", message, path: [path] });
+      return z.NEVER;
+    };
+    let repsMin: number;
+    let repsMax: number | null;
+    let repsPerSet: number[] | null = null;
+    if (data.repsMode === "perSet") {
+      const values = (data.repsPerSet ?? "").split(",").map((v) => Number(v.trim()));
+      if (values.length !== data.sets || values.some((v) => !Number.isInteger(v) || v < 1 || v > 100)) {
+        return fail("repsPerSet", "Escolha as repetições de cada série (entre 1 e 100).");
+      }
+      repsPerSet = values;
+      repsMin = Math.min(...values);
+      repsMax = Math.max(...values);
+    } else {
+      const min = requiredInt("as repetições", 1, 100).safeParse(data.repsMin);
+      if (!min.success) return fail("repsMin", min.error.issues[0].message);
+      const max = optionalInt("o máximo de repetições", 1, 100).safeParse(data.repsMax);
+      if (!max.success) return fail("repsMax", max.error.issues[0].message);
+      if (max.data !== undefined && max.data < min.data) return fail("repsMax", "O máximo precisa ser maior ou igual ao mínimo.");
+      repsMin = min.data;
+      repsMax = max.data ?? null;
+    }
+    return { sets: data.sets, repsMin, repsMax, repsPerSet, loadKg: data.loadKg, restSeconds: data.restSeconds, notes: data.notes };
   })
   .transform((data) => ({
     sets: data.sets,
     repsMin: data.repsMin,
-    repsMax: data.repsMax ?? null,
+    repsMax: data.repsMax,
+    repsPerSet: data.repsPerSet,
     loadKg: data.loadKg === undefined ? null : Math.round(data.loadKg * 100) / 100,
     restSeconds: data.restSeconds ?? null,
     notes: data.notes,

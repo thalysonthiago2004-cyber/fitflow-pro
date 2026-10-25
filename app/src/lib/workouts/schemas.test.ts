@@ -5,14 +5,24 @@ describe("prescriptionSchema", () => {
   it("parses Brazilian input and optional fields", () => {
     expect(
       prescriptionSchema.parse({ sets: "4", repsMin: "8", repsMax: "12", loadKg: "22,5", restSeconds: "90", notes: "" }),
-    ).toEqual({ sets: 4, repsMin: 8, repsMax: 12, loadKg: 22.5, restSeconds: 90, notes: null });
+    ).toEqual({ sets: 4, repsMin: 8, repsMax: 12, repsPerSet: null, loadKg: 22.5, restSeconds: 90, notes: null });
     expect(prescriptionSchema.parse({ sets: "3", repsMin: "10", repsMax: "", loadKg: "", restSeconds: "", notes: "" })).toEqual({
       sets: 3,
       repsMin: 10,
       repsMax: null,
+      repsPerSet: null,
       loadKg: null,
       restSeconds: null,
       notes: null,
+    });
+  });
+
+  it("takes one repetition target per set", () => {
+    const base = { sets: "3", repsMode: "perSet", loadKg: "", restSeconds: "", notes: "" };
+    expect(prescriptionSchema.parse({ ...base, repsPerSet: "12,10,8" })).toMatchObject({ repsPerSet: [12, 10, 8], repsMin: 8, repsMax: 12 });
+    expect(prescriptionSchema.safeParse({ ...base, repsPerSet: "12,10" }).error?.issues[0]).toMatchObject({
+      path: ["repsPerSet"],
+      message: "Escolha as repetições de cada série (entre 1 e 100).",
     });
   });
 

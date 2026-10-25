@@ -13,6 +13,8 @@ import { getExercise } from "@/lib/workouts/queries";
 import { updateExercise } from "../actions";
 import { ExerciseForm } from "../exercise-form";
 import { ArchiveExerciseButton } from "./archive-exercise-button";
+import { CustomizationForm } from "./customization-form";
+import { VideoUpload } from "./video-upload";
 
 export const metadata: Metadata = { title: "Exercício" };
 
@@ -31,14 +33,26 @@ async function ExerciseContent({ params }: Pick<PageProps<"/exercises/[exerciseI
       <PageHeader
         title={exercise.name}
         description={`${MUSCLE_GROUP_LABELS[exercise.muscleGroup]} · ${EQUIPMENT_LABELS[exercise.equipment]}`}
-        actions={<StatusBadge tone={exercise.isGlobal ? "info" : "success"}>{exercise.isGlobal ? "Biblioteca padrão" : "Meu exercício"}</StatusBadge>}
+        actions={
+          <StatusBadge tone={exercise.isGlobal ? "info" : "success"}>
+            {exercise.isGlobal ? (exercise.customized ? "Biblioteca padrão · personalizado" : "Biblioteca padrão") : "Meu exercício"}
+          </StatusBadge>
+        }
       />
       <Card className="py-6 [--card-spacing:--spacing(6)]">
         <CardHeader>
           <CardTitle className="text-lg font-semibold"><h2>Como executar</h2></CardTitle>
         </CardHeader>
         <CardContent>
-          <ExerciseDemo name={exercise.name} instructions={exercise.instructions} videoUrl={exercise.videoUrl} />
+          <ExerciseDemo name={exercise.name} instructions={exercise.instructions} videoUrl={exercise.videoUrl} videoSrc={exercise.videoSrc} />
+        </CardContent>
+      </Card>
+      <Card className="py-6 [--card-spacing:--spacing(6)]">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold"><h2>Vídeo de demonstração</h2></CardTitle>
+        </CardHeader>
+        <CardContent>
+          <VideoUpload exerciseId={exercise.id} hasVideo={exercise.videoPath !== null} />
         </CardContent>
       </Card>
       {editable ? (
@@ -56,9 +70,17 @@ async function ExerciseContent({ params }: Pick<PageProps<"/exercises/[exerciseI
           </div>
         </>
       ) : (
-        <p className="text-sm text-muted-foreground">
-          Exercícios da biblioteca padrão não podem ser editados. Para uma versão personalizada, crie um novo exercício.
-        </p>
+        <Card className="py-6 [--card-spacing:--spacing(6)]">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold"><h2>Personalizar para meus alunos</h2></CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <p className="text-sm text-muted-foreground">
+              Escreva do seu jeito como executar e coloque seu próprio vídeo. A biblioteca padrão não muda para outros personais; seus treinos continuam usando este exercício.
+            </p>
+            <CustomizationForm exercise={exercise} />
+          </CardContent>
+        </Card>
       )}
     </div>
   );
