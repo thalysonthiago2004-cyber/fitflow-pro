@@ -57,6 +57,11 @@ test("@supabase trainer signs up and lands on an empty dashboard", async ({ page
 
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole("heading", { name: "Olá, Ana" })).toBeVisible();
+  // The session lives in httpOnly cookies: page scripts cannot read the tokens.
+  const session = (await page.context().cookies()).filter((c) => c.name.includes("auth-token"));
+  expect(session.length).toBeGreaterThan(0);
+  for (const c of session) expect(c.httpOnly, c.name).toBe(true);
+  expect(await page.evaluate(() => document.cookie.includes("auth-token"))).toBe(false);
   await expect(page.getByText("Nenhum aluno ainda").filter({ visible: true })).toBeVisible();
 });
 

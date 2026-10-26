@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { getPublicEnv } from "@/lib/env";
 import type { Database } from "./database.types";
+import { SESSION_COOKIE_OPTIONS, capSessionCookie } from "./cookies";
 import { loggingFetch } from "./logging-fetch";
 
 // Create a new client per request; never share one across requests.
@@ -19,6 +20,7 @@ export async function createClient() {
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     {
+      cookieOptions: SESSION_COOKIE_OPTIONS,
       global: { fetch: loggingFetch("server") },
       cookies: {
         getAll() {
@@ -27,7 +29,7 @@ export async function createClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
+              cookieStore.set(name, value, capSessionCookie(options)),
             );
           } catch {
             // Called from a Server Component, where cookies are read-only.

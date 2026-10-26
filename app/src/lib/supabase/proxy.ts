@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getPublicEnv } from "@/lib/env";
 import type { Database } from "./database.types";
+import { SESSION_COOKIE_OPTIONS, capSessionCookie } from "./cookies";
 import { loggingFetch } from "./logging-fetch";
 
 // Default deny: every route needs a session unless listed here, so new pages
@@ -28,6 +29,7 @@ export async function updateSession(request: NextRequest) {
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     {
+      cookieOptions: SESSION_COOKIE_OPTIONS,
       global: { fetch: loggingFetch("proxy") },
       cookies: {
         getAll() {
@@ -37,7 +39,7 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
+            response.cookies.set(name, value, capSessionCookie(options)),
           );
           Object.entries(headers).forEach(([key, value]) => response.headers.set(key, value));
         },
