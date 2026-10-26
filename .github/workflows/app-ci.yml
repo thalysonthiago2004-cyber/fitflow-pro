@@ -48,3 +48,40 @@ jobs:
           name: playwright-report
           path: app/test-results
           retention-days: 7
+
+  journeys:
+    # Full trainer/student journeys on the dedicated test project. Skipped
+    # until the repository has the E2E_SUPABASE_URL / E2E_SUPABASE_KEY secrets.
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      E2E_SUPABASE: "1"
+      E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      E2E_SUPABASE_KEY: ${{ secrets.E2E_SUPABASE_KEY }}
+    steps:
+      - name: Check secrets
+        id: secrets
+        run: echo "ready=${{ secrets.E2E_SUPABASE_URL != '' && secrets.E2E_SUPABASE_KEY != '' }}" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        if: steps.secrets.outputs.ready == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.secrets.outputs.ready == 'true'
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - if: steps.secrets.outputs.ready == 'true'
+        run: npm ci
+      - if: steps.secrets.outputs.ready == 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.secrets.outputs.ready == 'true'
+        run: npx playwright test e2e/flows.spec.ts --project=desktop
+        env:
+          CI: "true"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: journeys-report
+          path: app/test-results
+          retention-days: 7
