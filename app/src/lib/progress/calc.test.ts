@@ -12,6 +12,13 @@ describe("estimateWorkoutKcal", () => {
     expect(estimateWorkoutKcal(80, "2026-10-20T10:00:00Z", "2026-10-20T10:02:00Z")).toBeNull();
     expect(estimateWorkoutKcal(80, "2026-10-20T10:00:00Z", "2026-10-20T19:00:00Z")).toBeNull();
   });
+
+  it("uses each cardio block's MET for its minutes", () => {
+    // 60 min session: 40 min strength (3.5) + 20 min treadmill at 9.8 MET, 80 kg.
+    expect(estimateWorkoutKcal(80, "2026-10-20T10:00:00Z", "2026-10-20T11:00:00Z", [{ minutes: 20, met: 9.8 }])).toBe(Math.round(3.5 * 80 * (40 / 60) + 9.8 * 80 * (20 / 60)));
+    // Cardio longer than the session is capped at the session length.
+    expect(estimateWorkoutKcal(80, "2026-10-20T10:00:00Z", "2026-10-20T10:30:00Z", [{ minutes: 45, met: 8 }])).toBe(Math.round(8 * 80 * 0.5));
+  });
 });
 
 describe("personalRecords", () => {

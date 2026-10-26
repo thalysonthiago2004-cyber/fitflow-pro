@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { ChevronRight, ClipboardList, Droplets, Dumbbell, Flame, MailPlus, Plus, UserPlus, Users } from "lucide-react";
+import { ChevronRight, CircleAlert, ClipboardList, HeartPulse, Droplets, Dumbbell, Flame, MailPlus, Plus, UserPlus, Users } from "lucide-react";
 import { IconTile } from "@/components/brand-ui/icon-tile";
 import { MetricRow } from "@/components/brand-ui/metric-row";
 import { ProgressRing } from "@/components/brand-ui/progress-ring";
@@ -19,6 +19,8 @@ import { weeklyStreak } from "@/lib/progress/calc";
 import { getCompletedWorkoutDates, getWorkspaceWeekActivity } from "@/lib/progress/queries";
 import { UserAvatar } from "@/components/user-avatar";
 import { avatarUrl } from "@/lib/images/urls";
+import { getLatestQuestionnaire } from "@/lib/students/questionnaire-queries";
+import { buildAttention, getAttentionData } from "@/lib/students/attention-queries";
 import { getTrainer, listPendingInvitations, listStudents } from "@/lib/students/queries";
 import { getOpenLog, getStudentPlans, listLogs, listPlans } from "@/lib/workouts/queries";
 
@@ -64,14 +66,16 @@ function SectionTitle({ id, title, href, linkLabel }: { id: string; title: strin
 
 async function TrainerHome({ user }: { user: CurrentUser }) {
   const workspace = user.workspace!;
-  const [students, invitations, plans, recentLogs, week] = await Promise.all([
+  const [students, invitations, plans, recentLogs, week, attentionData] = await Promise.all([
     listStudents(workspace.id),
     listPendingInvitations(workspace.id),
     listPlans({ workspaceId: workspace.id, statuses: ["active"] }),
     listLogs({ workspaceId: workspace.id, completedOnly: true, limit: 6 }),
     getWorkspaceWeekActivity(workspace.id),
+    getAttentionData(workspace.id),
   ]);
   const active = students.filter((s) => s.status === "active").length;
+  const attention = buildAttention(attentionData, students, plans);
 
   if (students.length === 0) {
     return (
@@ -128,6 +132,30 @@ async function TrainerHome({ user }: { user: CurrentUser }) {
           </div>
         </div>
       </section>
+
+      {attention.length > 0 && (
+        <section aria-labelledby="attention-title" className="grid gap-3">
+          <h2 id="attention-title" className="flex items-center gap-2 font-heading text-lg font-bold">
+            <CircleAlert className="size-5 text-warning" aria-hidden />
+            Precisa de atenção
+            <span className="rounded-full bg-muted px-2 text-sm tabular-nums">{attention.length}</span>
+          </h2>
+          <ul className="grid gap-2">
+            {attention.slice(0, 8).map((item, i) => (
+              <li key={`${item.studentId}-${i}`}>
+                <Link href={item.href} className="flex items-center gap-3 rounded-2xl border bg-card p-3 pr-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50">
+                  <span className="grid min-w-0 flex-1">
+                    <span className="truncate font-semibold">{item.studentName}</span>
+                    <span className="truncate text-sm text-muted-foreground">{item.reason}</span>
+                  </span>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {attention.length > 8 && <p className="text-sm text-muted-foreground">E mais {attention.length - 8} itens. Veja a lista de alunos.</p>}
+        </section>
+      )}
 
       <section aria-labelledby="recent-title" className="grid gap-3">
         <SectionTitle id="recent-title" title="Treinos concluídos" href="/students" linkLabel="Ver alunos" />
@@ -186,7 +214,7 @@ async function StudentHome({ user }: { user: CurrentUser }) {
     );
   }
 
-  const [trainer, plans, openLog, waterGoal, waterToday, mealPlans, workoutDates] = await Promise.all([
+  const [trainer, plans, openLog, waterGoal, waterToday, mealPlans, workoutDates, questionnaire] = await Promise.all([
     getTrainer(user.workspace.id),
     getStudentPlans(user.id),
     getOpenLog(user.id),
@@ -194,6 +222,7 @@ async function StudentHome({ user }: { user: CurrentUser }) {
     getDailyTotals(user.id, 1),
     getStudentMealPlans(user.id),
     getCompletedWorkoutDates(user.id),
+    getLatestQuestionnaire(user.id),
   ]);
 
   const today = weekdayToday();
@@ -237,6 +266,17 @@ async function StudentHome({ user }: { user: CurrentUser }) {
           <span className="truncate text-sm text-muted-foreground">{user.workspace.name}</span>
         </div>
       </section>
+
+      {!questionnaire && (
+        <Link href="/anamnese" className="flex items-center gap-4 rounded-3xl border border-warning/30 bg-warning/10 p-4 outline-none hover:bg-warning/15 focus-visible:ring-3 focus-visible:ring-ring/50 sm:p-5">
+          <HeartPulse className="size-6 shrink-0 text-warning" aria-hidden />
+          <span className="grid min-w-0 flex-1">
+            <span className="font-semibold">Responda a anamnese</span>
+            <span className="text-sm text-muted-foreground">7 perguntas rápidas de saúde para seu personal montar treinos seguros.</span>
+          </span>
+          <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+        </Link>
+      )}
 
       <section aria-labelledby="plan-title" className="grid gap-3">
         <div className="flex items-center justify-between gap-3">

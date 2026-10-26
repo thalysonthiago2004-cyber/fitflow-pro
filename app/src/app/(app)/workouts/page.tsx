@@ -14,18 +14,21 @@ import { listPlans } from "@/lib/workouts/queries";
 
 export const metadata: Metadata = { title: "Planos de treino" };
 
-const VIEWS: { key: PlanStatus; label: string }[] = [
+type View = PlanStatus | "templates";
+const VIEWS: { key: View; label: string }[] = [
   { key: "active", label: "Ativos" },
   { key: "draft", label: "Rascunhos" },
   { key: "archived", label: "Arquivados" },
+  { key: "templates", label: "Modelos" },
 ];
 
 async function PlansContent({ searchParams }: Pick<PageProps<"/workouts">, "searchParams">) {
   const { status } = await searchParams;
-  const view: PlanStatus = VIEWS.some((v) => v.key === status) ? (status as PlanStatus) : "active";
+  const view: View = VIEWS.some((v) => v.key === status) ? (status as View) : "active";
   const user = await requireStaff();
-  const plans = await listPlans({ workspaceId: user.workspace.id });
-  const visible = plans.filter((p) => p.status === view);
+  const [plans, templates] = await Promise.all([listPlans({ workspaceId: user.workspace.id }), listPlans({ workspaceId: user.workspace.id, templates: true })]);
+  const visible = view === "templates" ? templates : plans.filter((p) => p.status === view);
+  const count = (key: View) => (key === "templates" ? templates.length : plans.filter((p) => p.status === key).length);
 
   return (
     <div className="grid gap-6">
@@ -39,7 +42,7 @@ async function PlansContent({ searchParams }: Pick<PageProps<"/workouts">, "sear
                 className="flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium whitespace-nowrap text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-[current=page]:bg-card aria-[current=page]:text-foreground aria-[current=page]:shadow-sm"
               >
                 {label}
-                <span className="rounded-full bg-background px-1.5 text-xs tabular-nums">{plans.filter((p) => p.status === key).length}</span>
+                <span className="rounded-full bg-background px-1.5 text-xs tabular-nums">{count(key)}</span>
               </Link>
             </li>
           ))}
@@ -49,9 +52,15 @@ async function PlansContent({ searchParams }: Pick<PageProps<"/workouts">, "sear
       {visible.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
-          title={view === "active" ? "Nenhum plano ativo" : view === "draft" ? "Nenhum rascunho" : "Nenhum plano arquivado"}
-          description={view === "active" ? "Crie um plano e publique para o aluno começar a treinar." : "Os planos aparecem aqui conforme o status."}
-          action={view !== "archived" ? <Link href="/workouts/new" className={buttonVariants()}><Plus aria-hidden />Novo plano</Link> : undefined}
+          title={view === "active" ? "Nenhum plano ativo" : view === "draft" ? "Nenhum rascunho" : view === "templates" ? "Nenhum modelo ainda" : "Nenhum plano arquivado"}
+          description={
+            view === "templates"
+              ? "Abra um plano pronto e use \"Duplicar → Salvar como modelo\". Depois é só criar planos de alunos a partir dele."
+              : view === "active"
+                ? "Crie um plano e publique para o aluno começar a treinar."
+                : "Os planos aparecem aqui conforme o status."
+          }
+          action={view === "active" || view === "draft" ? <Link href="/workouts/new" className={buttonVariants()}><Plus aria-hidden />Novo plano</Link> : undefined}
         />
       ) : (
         <ul className="grid gap-2">
@@ -69,7 +78,7 @@ async function PlansContent({ searchParams }: Pick<PageProps<"/workouts">, "sear
                     {plan.endsOn && ` · até ${formatDate(plan.endsOn)}`}
                   </p>
                 </div>
-                <StatusBadge tone={PLAN_STATUS_TONES[plan.status]}>{PLAN_STATUS_LABELS[plan.status]}</StatusBadge>
+                {plan.isTemplate ? <StatusBadge tone="info">Modelo</StatusBadge> : <StatusBadge tone={PLAN_STATUS_TONES[plan.status]}>{PLAN_STATUS_LABELS[plan.status]}</StatusBadge>}
                 <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
               </Link>
             </li>

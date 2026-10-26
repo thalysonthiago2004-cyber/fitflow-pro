@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft, ChevronRight, Plus, TrendingUp } from "lucide-react";
+import { ArrowLeft, ChevronRight, Plus, TrendingUp, FileText } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { QuestionnaireSummary } from "@/components/students/questionnaire-summary";
 import { requireStaff } from "@/lib/auth/dal";
+import { getLatestQuestionnaire } from "@/lib/students/questionnaire-queries";
 import { ageFromBirthDate, formatDate, formatDuration, formatNumber } from "@/lib/format";
 import { getStudent } from "@/lib/students/queries";
 import { EXPERIENCE_LEVEL_LABELS, STUDENT_STATUS_LABELS } from "@/lib/students/schemas";
@@ -39,12 +41,13 @@ async function StudentContent({ params }: Pick<PageProps<"/students/[studentId]"
   const user = await requireStaff();
   const student = await getStudent(user.workspace.id, studentId);
   if (!student) notFound();
-  const [plans, logs, goalMl, waterDays, mealPlans] = await Promise.all([
+  const [plans, logs, goalMl, waterDays, mealPlans, questionnaire] = await Promise.all([
     listPlans({ workspaceId: user.workspace.id, studentId }),
     listLogs({ workspaceId: user.workspace.id, studentId, limit: 10 }),
     getCurrentGoal(studentId),
     getDailyTotals(studentId, 7),
     listMealPlans({ workspaceId: user.workspace.id, studentId }),
+    getLatestQuestionnaire(studentId),
   ]);
 
   return (
@@ -61,6 +64,10 @@ async function StudentContent({ params }: Pick<PageProps<"/students/[studentId]"
               <TrendingUp aria-hidden />
               Evolução e avaliação
             </Link>
+            <Link href={`/students/${student.userId}/report`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <FileText aria-hidden />
+              Relatório PDF
+            </Link>
           </>
         }
       />
@@ -73,6 +80,19 @@ async function StudentContent({ params }: Pick<PageProps<"/students/[studentId]"
             <Fact label="Idade" value={student.birthDate ? `${ageFromBirthDate(student.birthDate)} anos` : "Não informada"} />
             <Fact label="Altura" value={student.heightCm !== null ? `${formatNumber(student.heightCm)} cm` : "Não informada"} />
           </dl>
+        </CardContent>
+      </Card>
+
+      <Card className="gap-4 py-6 [--card-spacing:--spacing(6)]">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold"><h2>Anamnese (PAR-Q)</h2></CardTitle>
+        </CardHeader>
+        <CardContent>
+          {questionnaire ? (
+            <QuestionnaireSummary questionnaire={questionnaire} />
+          ) : (
+            <p className="text-sm text-muted-foreground">O aluno ainda não respondeu. Ele vê um lembrete no painel dele para preencher.</p>
+          )}
         </CardContent>
       </Card>
 

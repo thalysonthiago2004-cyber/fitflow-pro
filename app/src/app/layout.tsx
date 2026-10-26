@@ -17,6 +17,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: { default: "FitFlow Pro", template: "%s · FitFlow Pro" },
   description: "Gestão de alunos, treinos e evolução para personal trainers.",
+  applicationName: "FitFlow Pro",
+  appleWebApp: { capable: true, title: "FitFlow", statusBarStyle: "black-translucent" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {

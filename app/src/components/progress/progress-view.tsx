@@ -3,10 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { formatDate, formatNumber } from "@/lib/format";
 import { delta } from "@/lib/progress/calc";
 import { listProgressPhotos } from "@/lib/progress/photos";
-import { getBodyProfile, getPersonalRecords, getWeeklyWorkouts, listMeasurements, type Measurement } from "@/lib/progress/queries";
+import { getBodyProfile, getStrengthProgress, getWeeklyWorkouts, listMeasurements, type Measurement } from "@/lib/progress/queries";
 import { MEASUREMENT_FIELDS, type MeasurementKey, formatMeasure } from "@/lib/progress/schemas";
 import { Badge } from "@/components/ui/badge";
 import { CompositionCard } from "./composition-card";
+import { LoadChart } from "./load-chart";
 import { ProgressPhotos } from "./progress-photos";
 import { DeleteMeasurementButton } from "./delete-measurement-button";
 import { MeasurementEntry } from "./measurement-form";
@@ -30,9 +31,9 @@ function signed(n: number) {
 // Progress for one student, shared by the student's page and the trainer view.
 // Deltas are shown neutrally: whether "down" is good depends on the goal.
 export async function ProgressView({ studentId, viewerId }: { studentId: string; viewerId: string }) {
-  const [measurements, records, weeks, profile, photos] = await Promise.all([
+  const [measurements, { records, series: loadSeries }, weeks, profile, photos] = await Promise.all([
     listMeasurements(studentId),
-    getPersonalRecords(studentId),
+    getStrengthProgress(studentId),
     getWeeklyWorkouts(studentId, 8),
     getBodyProfile(studentId),
     listProgressPhotos(studentId),
@@ -90,6 +91,14 @@ export async function ProgressView({ studentId, viewerId }: { studentId: string;
 
       <Card className="py-6 [--card-spacing:--spacing(6)]">
         <CardContent><WeeklyWorkoutsChart weeks={weeks} /></CardContent>
+      </Card>
+
+      <Card className="gap-4 py-6 [--card-spacing:--spacing(6)]">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold"><h2>Evolução de carga</h2></CardTitle>
+          <CardDescription>Maior carga concluída em cada treino, por exercício.</CardDescription>
+        </CardHeader>
+        <CardContent><LoadChart series={loadSeries} /></CardContent>
       </Card>
 
       <Card className="gap-4 py-6 [--card-spacing:--spacing(6)]">

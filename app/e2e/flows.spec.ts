@@ -38,6 +38,20 @@ test("@supabase trainer signs up and lands on an empty dashboard", async ({ page
   await page.getByLabel("Nome completo").fill(trainer.name);
   await page.getByLabel("E-mail").fill(trainer.email);
   await page.getByLabel("Senha", { exact: true }).fill(trainer.password);
+  // Consent is required.
+  await page.getByRole("button", { name: "Criar conta" }).click();
+  await expect(page.getByText("Para continuar, aceite os termos de uso e a política de privacidade.").filter({ visible: true })).toBeVisible();
+  await page.getByLabel("Senha", { exact: true }).fill(trainer.password);
+  await page.getByLabel(/Li e aceito os termos de uso/).check();
+  if (process.env.E2E_BETA_CODE) {
+    // Closed beta: a wrong code is refused by the database, then the right one works.
+    await page.getByLabel("Código de acesso do beta").fill("CODIGO-ERRADO");
+    await page.getByRole("button", { name: "Criar conta" }).click();
+    await expect(page.getByText("Código de acesso inválido.").filter({ visible: true })).toBeVisible();
+    await page.getByLabel("Senha", { exact: true }).fill(trainer.password);
+    await page.getByLabel(/Li e aceito os termos de uso/).check();
+    await page.getByLabel("Código de acesso do beta").fill(process.env.E2E_BETA_CODE);
+  }
   await page.getByRole("button", { name: "Criar conta" }).click();
 
   await expect(page).toHaveURL(/\/dashboard$/);
@@ -69,8 +83,12 @@ test("@supabase student accepts the invitation and sees their trainer", async ({
   await expect(page.getByLabel("E-mail")).toHaveValue(student.email);
 
   await page.getByLabel("Crie uma senha").fill(student.password);
+  await page.getByLabel(/Li e aceito os termos de uso/).check();
+  await page.getByLabel(/Autorizo o uso dos meus dados de saúde/).check();
   await page.getByRole("button", { name: "Criar conta e aceitar convite" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
+  // New students are asked for the health questionnaire.
+  await expect(page.getByRole("link", { name: /Responda a anamnese/ })).toBeVisible();
   await expect(page.getByText("Seu plano ainda não foi publicado").filter({ visible: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "Seu personal" }).getByText("Ana Souza", { exact: true }).filter({ visible: true })).toBeVisible();
 
@@ -137,7 +155,7 @@ test("@supabase student records a workout and the trainer sees it", async ({ bro
   await login(studentPage, student.email, student.password);
   await studentPage.goto("/training");
   await expect(studentPage.getByRole("heading", { name: "Hipertrofia — fase 1" })).toBeVisible();
-  await studentPage.getByRole("link", { name: /Treino A/ }).click();
+  await studentPage.getByRole("link", { name: /Treino A/ }).first().click();
   await studentPage.getByRole("button", { name: "Iniciar treino" }).click();
   await expect(studentPage).toHaveURL(/\/training\/log\/[0-9a-f-]{36}$/);
 
@@ -546,4 +564,122 @@ test("@supabase bi-set with per-set reps and the trainer's own video", async ({ 
   await studentPage.getByRole("button", { name: "Descartar treino" }).click();
   await studentPage.getByRole("alertdialog").getByRole("button", { name: /Descartar/ }).click();
   await studentPage.context().close();
+});
+
+test("@supabase anamnesis flags medical clearance for the trainer", async ({ browser, page }) => {
+  const studentPage = await newPage(browser, "mobile");
+  await login(studentPage, student.email, student.password);
+  await studentPage.getByRole("link", { name: /Responda a anamnese/ }).click();
+  for (let i = 1; i <= 7; i++) {
+    const group = studentPage.getByRole("group", { name: `Pergunta ${i}` });
+    await group.getByText(i === 5 ? "Sim" : "Não", { exact: true }).click();
+  }
+  await studentPage.getByLabel("Lesões, dores ou cirurgias (opcional)").fill("Cirurgia no joelho direito em 2023");
+  await studentPage.getByRole("button", { name: "Enviar para meu personal" }).click();
+  await expect(studentPage.getByRole("heading", { name: "Respostas enviadas" })).toBeVisible();
+  await expect(studentPage.getByText(/recomendada liberação médica/)).toBeVisible();
+  await studentPage.goto("/dashboard");
+  await expect(studentPage.getByRole("link", { name: /Responda a anamnese/ })).toHaveCount(0);
+  await studentPage.context().close();
+
+  await login(page, trainer.email, trainer.password);
+  const attention = page.getByRole("region", { name: /Precisa de atenção/ });
+  await expect(attention.getByText("Anamnese indica liberação médica antes de treinar")).toBeVisible();
+  await page.goto("/students");
+  await page.getByRole("link", { name: student.name }).first().click();
+  await expect(page.getByText("Cirurgia no joelho direito em 2023")).toBeVisible();
+});
+
+test("@supabase templates: save a plan as a template and reuse it", async ({ page }) => {
+  await login(page, trainer.email, trainer.password);
+  await page.goto(planUrl);
+  await page.getByLabel("Destino").selectOption({ label: "Salvar como modelo" });
+  await page.getByLabel("Nome da cópia").fill("Modelo hipertrofia");
+  await page.getByRole("button", { name: "Duplicar plano" }).click();
+  await expect(page.getByRole("heading", { name: "Modelo hipertrofia" })).toBeVisible();
+  await expect(page.getByText("Modelo", { exact: true }).filter({ visible: true }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Publicar para o aluno" })).toHaveCount(0);
+  // Sessions, exercises and the bi-set came along.
+  await expect(page.getByText("Bi-set", { exact: true }).filter({ visible: true })).toHaveCount(1);
+
+  await page.goto("/workouts?status=templates");
+  await page.getByRole("link", { name: /Modelo hipertrofia/ }).click();
+  await page.getByLabel("Destino").selectOption({ label: `Para ${student.name}` });
+  await page.getByLabel("Nome da cópia").fill("Hipertrofia — fase 2");
+  await page.getByRole("button", { name: "Criar plano a partir do modelo" }).click();
+  await expect(page.getByRole("heading", { name: "Hipertrofia — fase 2" })).toBeVisible();
+  await expect(page.getByText("Este plano é um rascunho")).toBeVisible();
+});
+
+test("@supabase comments, last-time hints, body data and the report", async ({ browser, page }) => {
+  const studentPage = await newPage(browser, "mobile");
+  await login(studentPage, student.email, student.password);
+  await studentPage.goto("/training/history");
+  await studentPage.getByRole("link", { name: /Treino A/ }).first().click();
+  await studentPage.getByLabel("Escreva um comentário").fill("Senti o joelho no fim.");
+  await studentPage.getByRole("button", { name: "Comentar" }).click();
+  await expect(studentPage.getByText("Senti o joelho no fim.")).toBeVisible();
+
+  // Starting again shows what was done last time.
+  await studentPage.goto("/training");
+  await studentPage.getByRole("link", { name: /Treino A/ }).first().click();
+  await studentPage.getByRole("button", { name: "Iniciar treino" }).click();
+  await expect(studentPage.getByText(/Última vez \(/).first()).toBeVisible();
+  await studentPage.getByRole("button", { name: "Descartar treino" }).click();
+  await studentPage.getByRole("alertdialog").getByRole("button", { name: /Descartar/ }).click();
+
+  // The student keeps their own body data.
+  await studentPage.goto("/settings");
+  await studentPage.getByLabel("Altura (cm)").fill("166");
+  await studentPage.getByRole("button", { name: "Salvar dados" }).click();
+  await expect(studentPage.getByText("Dados atualizados.").filter({ visible: true })).toBeVisible();
+
+  // LGPD export.
+  const exported = await studentPage.request.get("/settings/export");
+  expect(exported.headers()["content-disposition"]).toContain("attachment");
+  const data = await exported.json();
+  expect(data.account.email).toBe(student.email);
+  expect(data.consents.map((c: { document: string }) => c.document).sort()).toEqual(["health_data", "privacy", "terms"]);
+  expect(data.profile.height_cm).toBe(166);
+  await studentPage.context().close();
+
+  await login(page, trainer.email, trainer.password);
+  await page.goto("/students");
+  await page.getByRole("link", { name: student.name }).first().click();
+  await page.getByRole("link", { name: "Relatório PDF" }).click();
+  await expect(page.getByRole("heading", { name: "Relatório de evolução" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Salvar em PDF ou imprimir" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Antes e depois" })).toBeVisible();
+});
+
+test("@supabase TACO foods import into the library with their source", async ({ page }) => {
+  await login(page, trainer.email, trainer.password);
+  await page.goto("/foods/taco");
+  await page.getByLabel("Buscar alimento").fill("arroz, integral, cozido");
+  await page.getByLabel(/Arroz, integral, cozido/).check();
+  await page.getByRole("button", { name: "Importar selecionados" }).click();
+  await expect(page.getByText("1 alimento importado.").filter({ visible: true })).toBeVisible();
+  await expect(page.getByText("Na biblioteca").first()).toBeVisible();
+  await page.goto("/foods");
+  await expect(page.getByText("Arroz, integral, cozido").first()).toBeVisible();
+});
+
+test("@supabase a student deletes their account", async ({ browser, page }) => {
+  const studentPage = await newPage(browser, "mobile");
+  await login(studentPage, student.email, student.password);
+  await studentPage.goto("/settings");
+  await studentPage.getByRole("button", { name: "Excluir minha conta" }).click();
+  await studentPage.getByLabel("Digite EXCLUIR para confirmar").fill("EXCLUIR");
+  await studentPage.getByRole("alertdialog").getByRole("button", { name: "Excluir conta" }).click();
+  await expect(studentPage).toHaveURL(/\/login\?conta=excluida$/);
+  await expect(studentPage.getByText("Sua conta e seus dados foram excluídos.")).toBeVisible();
+  await studentPage.getByLabel("E-mail").fill(student.email);
+  await studentPage.getByLabel("Senha", { exact: true }).fill(student.password);
+  await studentPage.getByRole("button", { name: "Entrar" }).click();
+  await expect(studentPage).toHaveURL(/\/login/);
+  await studentPage.context().close();
+
+  await login(page, trainer.email, trainer.password);
+  await page.goto("/students");
+  await expect(page.getByRole("link", { name: student.name })).toHaveCount(0);
 });

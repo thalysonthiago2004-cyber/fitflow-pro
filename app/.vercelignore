@@ -1,0 +1,10 @@
+# Never upload secrets or local state to Vercel.
+.env*
+!.env.example
+.local-backend
+.netlify
+.next
+node_modules
+test-results
+playwright-report
+*.tsbuildinfo

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Apple, ArrowLeft, ChevronRight, Plus, Search } from "lucide-react";
+import { Apple, ArrowLeft, ChevronRight, Plus, Search, Download } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
@@ -67,7 +67,12 @@ export default function FoodsPage({ searchParams }: PageProps<"/foods">) {
       <PageHeader
         title="Alimentos"
         description="Informação nutricional por 100 g ou 100 ml, sempre com a fonte."
-        actions={<Link href="/foods/new" className={buttonVariants()}><Plus aria-hidden />Novo alimento</Link>}
+        actions={
+          <>
+            <Link href="/foods/taco" className={buttonVariants({ variant: "outline" })}><Download aria-hidden />Importar da TACO</Link>
+            <Link href="/foods/new" className={buttonVariants()}><Plus aria-hidden />Novo alimento</Link>
+          </>
+        }
       />
       <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando alimentos" />}>
         <FoodsContent searchParams={searchParams} />

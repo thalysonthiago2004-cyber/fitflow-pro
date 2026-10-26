@@ -8,13 +8,23 @@
  */
 export const RESISTANCE_TRAINING_MET = 3.5;
 
-/** kcal ≈ MET × body weight (kg) × duration (h). Null when inputs are missing or implausible. */
-export function estimateWorkoutKcal(weightKg: number | null, startedAt: string, completedAt: string | null): number | null {
+export type CardioBlock = { minutes: number; met: number };
+
+/**
+ * kcal ≈ MET × body weight (kg) × duration (h). Cardio blocks use their own
+ * MET for their recorded minutes; the rest of the session counts as
+ * resistance training. Null when inputs are missing or implausible.
+ */
+export function estimateWorkoutKcal(weightKg: number | null, startedAt: string, completedAt: string | null, cardio: CardioBlock[] = []): number | null {
   if (weightKg === null || completedAt === null) return null;
   const hours = (new Date(completedAt).getTime() - new Date(startedAt).getTime()) / 3_600_000;
   // Sessions shorter than 5 min or longer than 4 h are likely left open by mistake.
   if (hours < 5 / 60 || hours > 4) return null;
-  return Math.round(RESISTANCE_TRAINING_MET * weightKg * hours);
+  // Recorded cardio cannot exceed the session itself.
+  const cardioHours = Math.min(hours, cardio.reduce((sum, c) => sum + c.minutes, 0) / 60);
+  const scale = cardio.length && cardioHours > 0 ? cardioHours / (cardio.reduce((sum, c) => sum + c.minutes, 0) / 60) : 1;
+  const cardioKcal = cardio.reduce((sum, c) => sum + c.met * weightKg * (c.minutes / 60) * scale, 0);
+  return Math.round(RESISTANCE_TRAINING_MET * weightKg * (hours - cardioHours) + cardioKcal);
 }
 
 export type LoggedSet = {

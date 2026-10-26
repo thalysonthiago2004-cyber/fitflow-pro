@@ -198,3 +198,60 @@
   background-image: radial-gradient(120% 90% at 100% 0%, rgb(183 243 74 / 0.16), transparent 55%);
 }
 
+
+/* Printing (e.g. the student report → PDF) always uses the light palette. */
+@media print {
+  .dark {
+    --background: #f5f7f4;
+    --foreground: #182019;
+    --card: #ffffff;
+    --card-foreground: #182019;
+    --popover: #ffffff;
+    --popover-foreground: #182019;
+    --primary: #101411;
+    --primary-foreground: #f5f7f4;
+    --secondary: #eaeee8;
+    --secondary-foreground: #182019;
+    --muted: #eef1ed;
+    --muted-foreground: #566157;
+    --accent: #eef1ed;
+    --accent-foreground: #182019;
+    --brand: #b7f34a;
+    --brand-foreground: #101411;
+    --destructive: #c53030;
+    --destructive-foreground: #ffffff;
+    --success: #218653;
+    --success-foreground: #ffffff;
+    --warning: #b45309;
+    --warning-foreground: #ffffff;
+    --info: #2563eb;
+    --info-foreground: #ffffff;
+    --border: #dde3dc;
+    --input: #859186;
+    --ring: #101411;
+    --chart-1: #101411;
+    --chart-2: #2563eb;
+    --chart-3: #218653;
+    --chart-4: #b45309;
+    --chart-5: #566157;
+    --radius: 0.875rem;
+    --meter-fill: #101411;
+    --meter-track: #dff5b5;
+    --glow: rgb(183 243 74 / 0.35);
+    --sidebar: #ffffff;
+    --sidebar-foreground: #182019;
+    --sidebar-primary: #101411;
+    --sidebar-primary-foreground: #f5f7f4;
+    --sidebar-accent: #eef1ed;
+    --sidebar-accent-foreground: #182019;
+    --sidebar-border: #dde3dc;
+    --sidebar-ring: #101411;
+  }
+  html,
+  body {
+    background: #ffffff;
+  }
+  @page {
+    margin: 14mm;
+  }
+}

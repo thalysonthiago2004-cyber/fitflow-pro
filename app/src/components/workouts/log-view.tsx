@@ -1,12 +1,29 @@
 import { CircleCheck, CircleDashed } from "lucide-react";
 import { formatDateTime, formatDuration, formatNumber } from "@/lib/format";
-import { RESISTANCE_TRAINING_MET, estimateWorkoutKcal } from "@/lib/progress/calc";
+import { type CardioBlock, RESISTANCE_TRAINING_MET, estimateWorkoutKcal } from "@/lib/progress/calc";
+import { cardioMet } from "@/lib/workouts/met";
 import { formatPrescription } from "@/lib/workouts/labels";
 import type { LogDetail } from "@/lib/workouts/queries";
 
 // Read-only summary of a recorded workout: prescribed vs. performed.
+/** Completed cardio blocks with the minutes the student recorded and the activity's MET. */
+function cardioBlocks(log: LogDetail): CardioBlock[] {
+  return log.exercises.flatMap((item) => {
+    if (item.kind !== "cardio") return [];
+    const done = log.cardio.find((c) => c.sessionExerciseId === item.id && c.completed);
+    if (!done) return [];
+    const target = item.cardio;
+    const minutes =
+      target.mode === "intervals"
+        ? ((done.roundsDone ?? 0) * ((target.workSeconds ?? 0) + (target.restSeconds ?? 0))) / 60
+        : (done.durationMinutes ?? 0);
+    return minutes > 0 ? [{ minutes, met: cardioMet(item.exercise.name, target.intensity) }] : [];
+  });
+}
+
 export function LogView({ log, weightKg = null }: { log: LogDetail; weightKg?: number | null }) {
-  const kcal = estimateWorkoutKcal(weightKg, log.startedAt, log.completedAt);
+  const cardio = cardioBlocks(log);
+  const kcal = estimateWorkoutKcal(weightKg, log.startedAt, log.completedAt, cardio);
   const hasCardio = log.exercises.some((e) => e.kind === "cardio");
   const done = log.sets.filter((s) => s.completed).length + log.cardio.filter((c) => c.completed).length;
   const planned = log.exercises.reduce((sum, e) => sum + (e.kind === "cardio" ? 1 : e.sets), 0);
@@ -36,8 +53,9 @@ export function LogView({ log, weightKg = null }: { log: LogDetail; weightKg?: n
         <p className="rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
           {kcal !== null ? (
             <>
-              <strong className="text-sm text-foreground">Gasto estimado ≈ {formatNumber(kcal, 0)} kcal.</strong> Cálculo: MET{" "}
-              {formatNumber(RESISTANCE_TRAINING_MET, 1)} (treino resistido moderado, Compêndio de Atividades Físicas) × {formatNumber(weightKg!, 1)} kg × duração.
+              <strong className="text-sm text-foreground">Gasto estimado ≈ {formatNumber(kcal, 0)} kcal.</strong> Cálculo: MET × {formatNumber(weightKg!, 1)} kg × duração, com MET{" "}
+              {formatNumber(RESISTANCE_TRAINING_MET, 1)} para musculação
+              {cardio.length > 0 && " e o MET de cada atividade de cardio (pela intensidade prescrita) nos minutos registrados"}, segundo o Compêndio de Atividades Físicas.
               É uma aproximação: varia com intensidade, pausas e características individuais.
             </>
           ) : (

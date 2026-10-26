@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import type { PlanStatus } from "@/lib/supabase/database.types";
 import { deletePlan, setPlanStatus } from "../actions";
 
-type Props = { planId: string; status: PlanStatus; studentName: string };
+type Props = { planId: string; status: PlanStatus; studentName: string; isTemplate?: boolean };
 
-export function PlanStatusActions({ planId, status, studentName }: Props) {
+export function PlanStatusActions({ planId, status, studentName, isTemplate = false }: Props) {
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-      {status !== "active" && (
+      {status !== "active" && !isTemplate && (
         <ConfirmAction
           trigger={
             <Button>
@@ -41,7 +41,7 @@ export function PlanStatusActions({ planId, status, studentName }: Props) {
           onConfirm={() => setPlanStatus(planId, "draft")}
         />
       )}
-      {status !== "archived" && (
+      {status !== "archived" && !isTemplate && (
         <ConfirmAction
           trigger={
             <Button variant="outline">
@@ -60,11 +60,11 @@ export function PlanStatusActions({ planId, status, studentName }: Props) {
         trigger={
           <Button variant="destructive">
             <Trash2 aria-hidden />
-            Excluir plano
+            {isTemplate ? "Excluir modelo" : "Excluir plano"}
           </Button>
         }
-        title="Excluir plano?"
-        description="O plano e todos os treinos dele serão apagados. Só é possível excluir planos sem treinos registrados."
+        title={isTemplate ? "Excluir modelo?" : "Excluir plano?"}
+        description={isTemplate ? "O modelo é apagado. Planos já criados a partir dele não mudam." : "O plano e todos os treinos dele serão apagados. Só é possível excluir planos sem treinos registrados."}
         confirmLabel="Excluir"
         destructive
         onConfirm={() => deletePlan(planId)}

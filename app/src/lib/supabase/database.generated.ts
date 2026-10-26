@@ -158,6 +158,35 @@ export type Database = {
           },
         ]
       }
+      consents: {
+        Row: {
+          accepted_at: string
+          document: string
+          user_id: string
+          version: string
+        }
+        Insert: {
+          accepted_at?: string
+          document: string
+          user_id: string
+          version: string
+        }
+        Update: {
+          accepted_at?: string
+          document?: string
+          user_id?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consents_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercise_customizations: {
         Row: {
           created_at: string
@@ -342,6 +371,41 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      health_questionnaires: {
+        Row: {
+          answers: Json
+          id: string
+          needs_clearance: boolean
+          student_id: string
+          submitted_at: string
+          workspace_id: string
+        }
+        Insert: {
+          answers: Json
+          id?: string
+          needs_clearance: boolean
+          student_id: string
+          submitted_at?: string
+          workspace_id: string
+        }
+        Update: {
+          answers?: Json
+          id?: string
+          needs_clearance?: boolean
+          student_id?: string
+          submitted_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_questionnaires_workspace_id_student_id_fkey"
+            columns: ["workspace_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["workspace_id", "user_id"]
           },
         ]
       }
@@ -641,6 +705,32 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          updated_at: string
+          user_id: string
+          workout_reminder_time: string | null
+        }
+        Insert: {
+          updated_at?: string
+          user_id: string
+          workout_reminder_time?: string | null
+        }
+        Update: {
+          updated_at?: string
+          user_id?: string
+          workout_reminder_time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_path: string | null
@@ -703,6 +793,41 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "students"
             referencedColumns: ["workspace_id", "user_id"]
+          },
+        ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -963,6 +1088,45 @@ export type Database = {
           },
         ]
       }
+      workout_comments: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          log_id: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          log_id: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          log_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_comments_log_id_fkey"
+            columns: ["log_id"]
+            isOneToOne: false
+            referencedRelation: "workout_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workout_logs: {
         Row: {
           completed_at: string | null
@@ -1030,11 +1194,12 @@ export type Database = {
           created_by: string | null
           ends_on: string | null
           id: string
+          is_template: boolean
           name: string
           notes: string | null
           starts_on: string | null
           status: Database["public"]["Enums"]["plan_status"]
-          student_id: string
+          student_id: string | null
           updated_at: string
           workspace_id: string
         }
@@ -1043,11 +1208,12 @@ export type Database = {
           created_by?: string | null
           ends_on?: string | null
           id?: string
+          is_template?: boolean
           name: string
           notes?: string | null
           starts_on?: string | null
           status?: Database["public"]["Enums"]["plan_status"]
-          student_id: string
+          student_id?: string | null
           updated_at?: string
           workspace_id: string
         }
@@ -1056,11 +1222,12 @@ export type Database = {
           created_by?: string | null
           ends_on?: string | null
           id?: string
+          is_template?: boolean
           name?: string
           notes?: string | null
           starts_on?: string | null
           status?: Database["public"]["Enums"]["plan_status"]
-          student_id?: string
+          student_id?: string | null
           updated_at?: string
           workspace_id?: string
         }
@@ -1196,6 +1363,18 @@ export type Database = {
     }
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string }
+      claim_due_reminders: {
+        Args: { p_now?: string }
+        Returns: {
+          auth: string
+          body: string
+          endpoint: string
+          kind: string
+          p256dh: string
+          title: string
+          user_id: string
+        }[]
+      }
       create_student_invitation: {
         Args: { p_email: string; p_full_name: string; p_workspace_id: string }
         Returns: {
@@ -1203,6 +1382,11 @@ export type Database = {
           invitation_id: string
           token: string
         }[]
+      }
+      delete_my_account: { Args: never; Returns: undefined }
+      duplicate_workout_plan: {
+        Args: { p_name: string; p_plan: string; p_student: string }
+        Returns: string
       }
       get_invitation: {
         Args: { p_token: string }
@@ -1228,6 +1412,14 @@ export type Database = {
       }
       revoke_student_invitation: {
         Args: { p_invitation_id: string }
+        Returns: undefined
+      }
+      update_my_body_profile: {
+        Args: {
+          p_birth_date: string
+          p_height_cm: number
+          p_sex: Database["public"]["Enums"]["sex"]
+        }
         Returns: undefined
       }
     }

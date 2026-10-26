@@ -1,7 +1,7 @@
 import "server-only";
 
 export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
-export const PHOTO_MAX_BYTES = 4 * 1024 * 1024;
+export const PHOTO_MAX_BYTES = 3.5 * 1024 * 1024;
 
 export type ImageCheck = { ok: true; file: File } | { ok: false; message: string };
 

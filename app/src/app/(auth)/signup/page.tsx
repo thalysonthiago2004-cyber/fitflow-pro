@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { isBetaSignupClosed } from "@/lib/auth/beta";
 import { AuthCard } from "../auth-card";
 import { TextLink } from "../text-link";
 import { SignupForm } from "./signup-form";
@@ -16,7 +17,7 @@ export default function SignupPage() {
         </p>
       }
     >
-      <SignupForm />
+      <SignupForm betaClosed={isBetaSignupClosed()} />
     </AuthCard>
   );
 }

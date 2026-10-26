@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, HeartPulse, Layers, LoaderCircle, Timer, X } from "lucide-react";
+import { Check, ChevronDown, HeartPulse, Layers, LoaderCircle, Timer, TrendingUp, X } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmAction } from "@/components/confirm-action";
@@ -10,8 +10,9 @@ import { TextareaField } from "@/components/forms/textarea-field";
 import { ExerciseDemo } from "@/components/workouts/exercise-demo";
 import { Button } from "@/components/ui/button";
 import { initialFormState } from "@/lib/auth/schemas";
-import { formatNumber } from "@/lib/format";
+import { formatDate, formatNumber } from "@/lib/format";
 import { formatPrescription, formatRest, formatSetReps, groupSupersets, repsForSet, supersetLabel } from "@/lib/workouts/labels";
+import { type LastPerformance, suggestLoad, workingLoad } from "@/lib/workouts/progression";
 import type { LogDetail, Prescription, StrengthPrescription } from "@/lib/workouts/queries";
 import { cn } from "@/lib/utils";
 import { discardWorkout, finishWorkout, saveSet } from "../../actions";
@@ -27,7 +28,15 @@ function initialSets(log: LogDetail): Record<string, SetState[]> {
         const saved = log.sets.find((s) => s.sessionExerciseId === item.id && s.setNumber === i + 1);
         return {
           reps: saved?.reps != null ? String(saved.reps) : "",
-          loadKg: saved?.loadKg != null ? formatNumber(saved.loadKg, 2) : item.loadKg != null ? formatNumber(item.loadKg, 2) : "",
+          // Saved value, else the prescription, else what the student lifted last time.
+          loadKg:
+            saved?.loadKg != null
+              ? formatNumber(saved.loadKg, 2)
+              : item.loadKg != null
+                ? formatNumber(item.loadKg, 2)
+                : lastLoad(log, item) != null
+                  ? formatNumber(lastLoad(log, item)!, 2)
+                  : "",
           completed: saved?.completed ?? false,
           saving: false,
         };
@@ -121,6 +130,7 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
                   </p>
                   <h2 className="font-heading text-lg font-semibold">{item.exercise.name}</h2>
                   <p className="text-sm text-muted-foreground">{item.kind === "cardio" ? `Meta: ${formatPrescription(item)}` : targetLine(item, true)}</p>
+                  {item.kind === "strength" && <LastTime item={item} last={log.previous[item.exercise.id]} />}
                   {item.notes && <p className="text-sm">{item.notes}</p>}
                 </div>
                 <HowTo item={item} />
@@ -172,6 +182,7 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
                   <li key={item.id} className="grid gap-1 rounded-lg border p-3">
                     <p className="font-medium">{item.exercise.name}</p>
                     <p className="text-sm text-muted-foreground">{targetLine(item, false)}</p>
+                    <LastTime item={item} last={log.previous[item.exercise.id]} />
                     {item.notes && <p className="text-sm">{item.notes}</p>}
                     <HowTo item={item} />
                   </li>
@@ -257,6 +268,33 @@ function SetRow({ item, index, set, rowLabel, onChange, onToggle }: SetRowProps)
       >
         {set.saving ? <LoaderCircle className="animate-spin" aria-hidden /> : <Check aria-hidden />}
       </Button>
+    </div>
+  );
+}
+
+function lastLoad(log: LogDetail, item: StrengthPrescription): number | null {
+  const last = log.previous[item.exercise.id];
+  return last ? workingLoad(last.sets) : null;
+}
+
+// What the student did last time, plus a load hint when they topped the range.
+function LastTime({ item, last }: { item: StrengthPrescription; last: LastPerformance | undefined }) {
+  if (!last) return null;
+  const done = last.sets.filter((s) => s.completed);
+  if (done.length === 0) return null;
+  const load = workingLoad(last.sets);
+  const suggestion = suggestLoad(item, last);
+  return (
+    <div className="grid gap-1 rounded-lg bg-muted/60 px-3 py-2 text-sm">
+      <p className="text-muted-foreground tabular-nums">
+        Última vez ({formatDate(last.date)}): {done.map((s) => s.reps ?? "–").join(", ")} reps{load !== null ? ` · ${formatNumber(load, 2)} kg` : ""}
+      </p>
+      {suggestion && (
+        <p className="flex items-center gap-1.5 font-medium">
+          <TrendingUp className="size-4 shrink-0 text-success" aria-hidden />
+          Você bateu o topo das repetições. Sugestão: {formatNumber(suggestion.suggestedLoadKg, 2)} kg.
+        </p>
+      )}
     </div>
   );
 }

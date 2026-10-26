@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { authErrorMessage } from "@/lib/auth/errors";
 import { formString, validationError } from "@/lib/auth/form-state";
+import { isBetaSignupClosed } from "@/lib/auth/beta";
 import { safeRedirectPath } from "@/lib/auth/safe-redirect";
 import {
   type FormState,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/auth/schemas";
 import { getPublicEnv } from "@/lib/env";
 import { dbErrorMessage } from "@/lib/students/errors";
+import { LEGAL_VERSION } from "@/lib/legal";
 import { createClient } from "@/lib/supabase/server";
 
 function confirmUrl(next: string) {
@@ -33,18 +35,39 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   redirect(safeRedirectPath(formString(formData, "next")));
 }
 
+const CONSENT_REQUIRED = "Para continuar, aceite os termos de uso e a política de privacidade.";
+const HEALTH_CONSENT_REQUIRED = "Para o acompanhamento, autorize o uso dos seus dados de saúde.";
+
 export async function signup(_prev: FormState, formData: FormData): Promise<FormState> {
-  const values = { fullName: formString(formData, "fullName"), email: formString(formData, "email") };
-  const parsed = signupSchema.safeParse({ ...values, password: formString(formData, "password") });
+  const values = { fullName: formString(formData, "fullName"), email: formString(formData, "email"), betaCode: formString(formData, "betaCode") };
+  const parsed = signupSchema.safeParse({ fullName: values.fullName, email: values.email, password: formString(formData, "password") });
   if (!parsed.success) return validationError(parsed.error, values);
+  if (formData.get("acceptTerms") !== "yes") {
+    return { status: "error", message: "Revise os campos destacados.", fieldErrors: { acceptTerms: [CONSENT_REQUIRED] }, values };
+  }
+  const betaClosed = isBetaSignupClosed();
+  if (betaClosed && !values.betaCode.trim()) {
+    return { status: "error", message: "Revise os campos destacados.", fieldErrors: { betaCode: ["Informe o código de acesso do beta."] }, values };
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     // Only the display name is sent; the role is assigned by the database trigger.
-    options: { data: { full_name: parsed.data.fullName }, emailRedirectTo: confirmUrl("/dashboard") },
+    options: {
+      data: { full_name: parsed.data.fullName, consent_version: LEGAL_VERSION, ...(betaClosed ? { beta_code: values.betaCode } : {}) },
+      emailRedirectTo: confirmUrl("/dashboard"),
+    },
   });
+  // A wrong beta code makes the sign-up trigger raise beta_code_invalid. Auth
+  // reports trigger failures as "Database error saving new user" (status 500)
+  // or passes the code through; for trainer sign-ups the trigger has no other
+  // expected failure.
+  const triggerFailed = error && (error.message.includes("beta_code_invalid") || error.message.includes("Database error saving new user") || error.code === "unexpected_failure");
+  if (triggerFailed && betaClosed) {
+    return { status: "error", message: "Revise os campos destacados.", fieldErrors: { betaCode: ["Código de acesso inválido."] }, values };
+  }
   if (error) return { status: "error", message: authErrorMessage(error), values };
 
   // E-mail confirmation disabled in the project: the user is already signed in.
@@ -127,12 +150,17 @@ export async function signupWithInvite(
     password: formString(formData, "password"),
   });
   if (!parsed.success) return validationError(parsed.error, { fullName });
+  const consentErrors = {
+    ...(formData.get("acceptTerms") !== "yes" ? { acceptTerms: [CONSENT_REQUIRED] } : {}),
+    ...(formData.get("acceptHealth") !== "yes" ? { acceptHealth: [HEALTH_CONSENT_REQUIRED] } : {}),
+  };
+  if (Object.keys(consentErrors).length) return { status: "error", message: "Revise os campos destacados.", fieldErrors: consentErrors, values: { fullName } };
 
   const { data, error } = await supabase.auth.signUp({
     email: invitation.email,
     password: parsed.data.password,
     options: {
-      data: { full_name: parsed.data.fullName, invite_token: token },
+      data: { full_name: parsed.data.fullName, invite_token: token, consent_version: LEGAL_VERSION },
       emailRedirectTo: confirmUrl("/dashboard"),
     },
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, LoaderCircle } from "lucide-react";
+import { Check, LoaderCircle, Timer } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { formatNumber } from "@/lib/format";
 import type { CardioLog, CardioPrescription } from "@/lib/workouts/queries";
 import { cn } from "@/lib/utils";
 import { saveCardio } from "../../actions";
+import { IntervalTimer } from "./interval-timer";
 
 export type CardioStatus = { completed: boolean; saving: boolean };
 
@@ -42,6 +43,9 @@ export function CardioBlock({
     roundsDone: saved?.roundsDone != null ? String(saved.roundsDone) : target.rounds != null ? String(target.rounds) : "",
   });
   const [status, setStatus] = useState<CardioStatus>({ completed: saved?.completed ?? false, saving: false });
+  const [timing, setTiming] = useState(false);
+  const canTime = intervals && target.rounds && target.workSeconds;
+  const recordRounds = (done: number) => setValues((current) => ({ ...current, roundsDone: String(done) }));
   const name = item.exercise.name;
 
   function report(next: CardioStatus) {
@@ -93,6 +97,24 @@ export function CardioBlock({
           </select>
         </label>
       </div>
+      {canTime && !status.completed && (
+        <Button type="button" variant="secondary" className="sm:justify-self-start" onClick={() => setTiming(true)}>
+          <Timer aria-hidden />
+          Iniciar intervalos
+        </Button>
+      )}
+      {timing && canTime && (
+        <IntervalTimer
+          rounds={target.rounds!}
+          workSeconds={target.workSeconds!}
+          restSeconds={target.restSeconds ?? 0}
+          onDone={recordRounds}
+          onClose={(done) => {
+            recordRounds(done);
+            setTiming(false);
+          }}
+        />
+      )}
       <Button
         type="button"
         variant={status.completed ? "default" : "outline"}

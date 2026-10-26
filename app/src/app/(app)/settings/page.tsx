@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { KeyRound } from "lucide-react";
+import { Download, KeyRound } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/dal";
 import { isStaffRole } from "@/lib/auth/roles";
 import { avatarUrl } from "@/lib/images/urls";
-import { AvatarForm, ProfileForm, WorkspaceForm } from "./settings-forms";
+import { getBodyProfile } from "@/lib/progress/queries";
+import { createClient } from "@/lib/supabase/server";
+import { NotificationsCard } from "./notifications-card";
+import { AvatarForm, BodyProfileForm, DeleteAccount, ProfileForm, WorkspaceForm } from "./settings-forms";
 
 export const metadata: Metadata = { title: "Configurações" };
 
@@ -28,6 +31,11 @@ function SettingsCard({ title, description, children }: { title: string; descrip
 
 async function SettingsContent() {
   const user = await requireUser();
+  const supabase = await createClient();
+  const [body, prefs] = await Promise.all([
+    user.role === "student" ? getBodyProfile(user.id) : null,
+    supabase.from("notification_preferences").select("workout_reminder_time").eq("user_id", user.id).maybeSingle(),
+  ]);
 
   return (
     <div className="grid max-w-2xl gap-6">
@@ -44,11 +52,35 @@ async function SettingsContent() {
         </SettingsCard>
       )}
 
+      {user.role === "student" && body && (
+        <SettingsCard title="Dados físicos" description="Sexo, altura e data de nascimento.">
+          <BodyProfileForm sex={body.sex} heightCm={body.heightCm} birthDate={body.birthDate} />
+        </SettingsCard>
+      )}
+
+      <SettingsCard title="Notificações" description="Lembretes no celular, mesmo com o app fechado.">
+        <NotificationsCard isStudent={user.role === "student"} workoutTime={prefs.data?.workout_reminder_time?.slice(0, 5) ?? null} />
+      </SettingsCard>
+
       <SettingsCard title="Segurança" description="Gerencie o acesso à sua conta.">
         <Link href="/reset-password" className={buttonVariants({ variant: "outline" })}>
           <KeyRound aria-hidden />
           Alterar senha
         </Link>
+      </SettingsCard>
+
+      <SettingsCard title="Privacidade e dados" description="Seus direitos pela LGPD.">
+        <div className="grid gap-5">
+          <div className="flex flex-wrap gap-2">
+            <a href="/settings/export" download className={buttonVariants({ variant: "outline" })}>
+              <Download aria-hidden />
+              Baixar meus dados
+            </a>
+            <Link href="/privacidade" className={buttonVariants({ variant: "ghost" })}>Política de privacidade</Link>
+            <Link href="/termos" className={buttonVariants({ variant: "ghost" })}>Termos de uso</Link>
+          </div>
+          <DeleteAccount ownsWorkspace={user.workspace?.role === "owner"} />
+        </div>
       </SettingsCard>
     </div>
   );

@@ -4,6 +4,7 @@ import { addDays, todayISO } from "@/lib/format";
 import type { MeasurementSource, Sex } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { type LoggedSet, type PersonalRecord, personalRecords, weeklyCounts } from "./calc";
+import { loadHistory } from "@/lib/workouts/progression";
 import { MEASUREMENT_FIELDS, type MeasurementKey } from "./schemas";
 
 export type Measurement = { id: string; measuredOn: string; source: MeasurementSource; notes: string | null; recordedBy: string; recordedByName: string } & Record<
@@ -99,8 +100,18 @@ async function loggedSets(studentId: string): Promise<LoggedSet[]> {
   });
 }
 
-export async function getPersonalRecords(studentId: string): Promise<PersonalRecord[]> {
-  return personalRecords(await loggedSets(studentId));
+export type LoadSeries = { exerciseId: string; exerciseName: string; points: { date: string; value: number }[] };
+
+/** Personal records and the best load per day for each exercise, from one read of the logs. */
+export async function getStrengthProgress(studentId: string): Promise<{ records: PersonalRecord[]; series: LoadSeries[] }> {
+  const sets = await loggedSets(studentId);
+  const byExercise = new Map<string, LoggedSet[]>();
+  for (const set of sets) byExercise.set(set.exerciseId, [...(byExercise.get(set.exerciseId) ?? []), set]);
+  const series = [...byExercise.values()]
+    .map((list) => ({ exerciseId: list[0].exerciseId, exerciseName: list[0].exerciseName, points: loadHistory(list) }))
+    .filter((s) => s.points.length > 0)
+    .sort((a, b) => b.points.length - a.points.length || a.exerciseName.localeCompare(b.exerciseName, "pt-BR"));
+  return { records: personalRecords(sets), series };
 }
 
 export async function getWeeklyWorkouts(studentId: string, weeks = 8): Promise<{ week: string; count: number }[]> {

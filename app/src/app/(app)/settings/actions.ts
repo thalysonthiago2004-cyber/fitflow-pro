@@ -1,10 +1,13 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
+import { z } from "zod";
 import { requireUser } from "@/lib/auth/dal";
 import { formString, validationError } from "@/lib/auth/form-state";
 import { type FormState, profileSchema, workspaceSchema } from "@/lib/auth/schemas";
 import { AVATAR_MAX_BYTES, checkJpeg } from "@/lib/images/validate";
+import { studentProfileSchema } from "@/lib/students/schemas";
 import { createClient } from "@/lib/supabase/server";
 
 const SAVE_ERROR = "Não foi possível salvar. Tente novamente.";
@@ -86,4 +89,64 @@ export async function removeAvatar(): Promise<AvatarResult> {
   await supabase.storage.from("avatars").remove([user.avatarPath]);
   refresh();
   return { ok: true };
+}
+
+// Account ----------------------------------------------------------------------
+
+export type AccountResult = { ok: true } | { ok: false; message: string };
+
+/**
+ * Deletes the signed-in user's account. Files are removed first (storage rows
+ * do not cascade); the database then cascades everything the user owns. A
+ * trainer's workspace and their students' records go with it.
+ */
+export async function deleteAccount(confirmation: string): Promise<AccountResult> {
+  const user = await requireUser();
+  if (confirmation.trim().toUpperCase() !== "EXCLUIR") return { ok: false, message: "Digite EXCLUIR para confirmar." };
+  const supabase = await createClient();
+
+  if (user.avatarPath) await supabase.storage.from("avatars").remove([user.avatarPath]);
+  if (user.role === "student") {
+    const { data: photos } = await supabase.from("progress_photos").select("storage_path").eq("student_id", user.id);
+    if (photos?.length) await supabase.storage.from("progress-photos").remove(photos.map((p) => p.storage_path));
+  } else if (user.workspace?.role === "owner") {
+    const workspaceId = user.workspace.id;
+    const [{ data: photos }, { data: videos }] = await Promise.all([
+      supabase.from("progress_photos").select("storage_path").eq("workspace_id", workspaceId),
+      supabase.storage.from("exercise-videos").list(workspaceId, { limit: 1000 }),
+    ]);
+    if (photos?.length) await supabase.storage.from("progress-photos").remove(photos.map((p) => p.storage_path));
+    if (videos?.length) await supabase.storage.from("exercise-videos").remove(videos.map((v) => `${workspaceId}/${v.name}`));
+  }
+
+  const { error } = await supabase.rpc("delete_my_account");
+  if (error) return { ok: false, message: "Não foi possível excluir a conta. Tente novamente." };
+  await supabase.auth.signOut();
+  redirect("/login?conta=excluida");
+}
+
+const bodyProfileSchema = z.object({
+  sex: z.enum(["", "female", "male"], { error: "Selecione uma opção válida." }).transform((v) => (v === "" ? null : v)),
+  heightCm: studentProfileSchema.shape.heightCm,
+  birthDate: studentProfileSchema.shape.birthDate,
+});
+
+/** Students keep their own sex, height and birth date up to date (used by the body assessment). */
+export async function updateMyBodyProfile(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const values = { sex: formString(formData, "sex"), heightCm: formString(formData, "heightCm"), birthDate: formString(formData, "birthDate") };
+  if (user.role !== "student") return { status: "error", message: SAVE_ERROR, values };
+  const parsed = bodyProfileSchema.safeParse(values);
+  if (!parsed.success) return validationError(parsed.error, values);
+
+  const supabase = await createClient();
+  // Generated RPC types mark every argument as non-null; null clears the value.
+  const { error } = await supabase.rpc("update_my_body_profile", {
+    p_sex: parsed.data.sex as "female" | "male",
+    p_height_cm: parsed.data.heightCm as number,
+    p_birth_date: parsed.data.birthDate as string,
+  });
+  if (error) return { status: "error", message: SAVE_ERROR, values };
+  refresh();
+  return { status: "success", message: "Dados atualizados.", values };
 }

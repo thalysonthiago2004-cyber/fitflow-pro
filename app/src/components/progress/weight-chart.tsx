@@ -11,11 +11,11 @@ const tick = (date: string) => short.format(new Date(`${date}T12:00:00Z`));
 
 // Single series: the title names it, so no legend. 2px line, ≥8px dots with a
 // surface ring, hairline solid grid, value labeled at the end only.
-export function WeightChart({ points, unit = "kg", title = "Peso" }: { points: Point[]; unit?: string; title?: string }) {
+export function WeightChart({ points, unit = "kg", title = "Peso", emptyText }: { points: Point[]; unit?: string; title?: string; emptyText?: string }) {
   if (points.length < 2) {
     return (
       <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-        Registre pelo menos duas medições de {title.toLowerCase()} para ver a evolução.
+        {emptyText ?? `Registre pelo menos duas medições de ${title.toLowerCase()} para ver a evolução.`}
       </p>
     );
   }

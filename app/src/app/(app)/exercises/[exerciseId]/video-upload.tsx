@@ -87,7 +87,7 @@ export function VideoUpload({ exerciseId, hasVideo }: { exerciseId: string; hasV
           <div className="h-full rounded-full bg-[var(--meter-fill)]" style={{ width: `${progress * 100}%` }} />
         </div>
       )}
-      <p className="text-xs text-muted-foreground">MP4, MOV ou WebM, até 50 MB (cerca de 1 minuto gravado no celular). Só você e seus alunos assistem.</p>
+      <p className="text-xs text-muted-foreground">MP4, MOV ou WebM, até 50 MB. Dica: grave em 720p e mantenha 20 a 40 segundos, para o vídeo ficar leve. Só você e seus alunos assistem.</p>
     </div>
   );
 }

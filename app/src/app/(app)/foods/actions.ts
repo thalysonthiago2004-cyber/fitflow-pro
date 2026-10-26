@@ -8,6 +8,7 @@ import { formString, validationError } from "@/lib/auth/form-state";
 import type { FormState } from "@/lib/auth/schemas";
 import { foodSchema } from "@/lib/nutrition/schemas";
 import { GENERIC_DB_ERROR } from "@/lib/students/errors";
+import { TACO_FOODS, tacoSource } from "@/lib/nutrition/taco";
 import { createClient } from "@/lib/supabase/server";
 
 const DUPLICATE = "Já existe um alimento com este nome.";
@@ -80,4 +81,44 @@ export async function archiveFood(foodId: string): Promise<{ ok: false; message:
     .select("id");
   if (error || !data?.length) return { ok: false, message: GENERIC_DB_ERROR };
   redirect("/foods");
+}
+
+// TACO import ----------------------------------------------------------------------
+
+export type ImportResult = { ok: true; added: number; skipped: number } | { ok: false; message: string };
+
+/**
+ * Copies TACO foods into the workspace's library, with the table cited as
+ * the source. Foods whose name already exists in the library are skipped.
+ */
+export async function importTacoFoods(items: number[]): Promise<ImportResult> {
+  const user = await requireStaff();
+  const wanted = new Set(items.filter((n) => Number.isInteger(n)));
+  const foods = TACO_FOODS.filter((f) => wanted.has(f.item));
+  if (foods.length === 0) return { ok: false, message: "Selecione pelo menos um alimento." };
+
+  const supabase = await createClient();
+  const { data: existing, error: readError } = await supabase.from("foods").select("name").eq("workspace_id", user.workspace.id).eq("archived", false);
+  if (readError) return { ok: false, message: GENERIC_DB_ERROR };
+  const taken = new Set(existing.map((f) => f.name.toLowerCase()));
+  const rows = foods
+    .filter((f) => !taken.has(f.name.toLowerCase()))
+    .map((f) => ({
+      workspace_id: user.workspace.id,
+      created_by: user.id,
+      name: f.name,
+      basis: "g" as const,
+      kcal_per_100: f.kcal,
+      protein_g_per_100: f.protein,
+      carbs_g_per_100: f.carbs,
+      fat_g_per_100: f.fat,
+      fiber_g_per_100: f.fiber,
+      source: tacoSource(f.item),
+    }));
+  for (let i = 0; i < rows.length; i += 200) {
+    const { error } = await supabase.from("foods").insert(rows.slice(i, i + 200));
+    if (error) return { ok: false, message: GENERIC_DB_ERROR };
+  }
+  refresh();
+  return { ok: true, added: rows.length, skipped: foods.length - rows.length };
 }

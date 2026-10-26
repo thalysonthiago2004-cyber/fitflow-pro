@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { LogView } from "@/components/workouts/log-view";
+import { WorkoutComments } from "@/components/workouts/workout-comments";
 import { formatLongDate, todayISO } from "@/lib/format";
 import { getLog } from "@/lib/workouts/queries";
 import { getWeightOn } from "@/lib/progress/queries";
@@ -29,7 +30,10 @@ async function LogContent({ params }: Pick<PageProps<"/training/log/[logId]">, "
         description={log.completedAt ? `Concluído em ${formatLongDate(log.completedAt)}` : "Registre as séries conforme for treinando."}
       />
       {log.completedAt ? (
-        <LogView log={log} weightKg={await getWeightOn(log.studentId, todayISO(new Date(log.completedAt)))} />
+        <>
+          <LogView log={log} weightKg={await getWeightOn(log.studentId, todayISO(new Date(log.completedAt)))} />
+          <WorkoutComments logId={log.id} viewerId={user.id} />
+        </>
       ) : (
         <WorkoutLogger log={log} />
       )}

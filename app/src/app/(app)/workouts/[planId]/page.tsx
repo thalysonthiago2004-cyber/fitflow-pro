@@ -7,10 +7,12 @@ import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireStaff } from "@/lib/auth/dal";
+import { listStudents } from "@/lib/students/queries";
 import { PLAN_STATUS_LABELS, PLAN_STATUS_TONES } from "@/lib/workouts/labels";
 import { getPlan, listExercises } from "@/lib/workouts/queries";
 import { AddSessionForm } from "./add-session-form";
 import { PlanDetailsForm } from "./plan-details-form";
+import { DuplicatePlanForm } from "./duplicate-plan-form";
 import { PlanStatusActions } from "./plan-status-actions";
 import { SessionCard } from "./session-card";
 
@@ -23,7 +25,7 @@ async function PlanBuilder({ params }: Pick<PageProps<"/workouts/[planId]">, "pa
   const { planId } = await params;
   if (!UUID.test(planId)) notFound();
   const user = await requireStaff();
-  const [plan, exercises] = await Promise.all([getPlan(planId), listExercises()]);
+  const [plan, exercises, students] = await Promise.all([getPlan(planId), listExercises(), listStudents(user.workspace.id)]);
   if (!plan || plan.workspaceId !== user.workspace.id) notFound();
 
   const pickable = exercises.map(({ id, name, muscleGroup }) => ({ id, name, muscleGroup }));
@@ -34,17 +36,23 @@ async function PlanBuilder({ params }: Pick<PageProps<"/workouts/[planId]">, "pa
       <PageHeader
         title={plan.name}
         description={
-          <>
-            Aluno:{" "}
-            <Link href={`/students/${plan.studentId}`} className="font-medium text-foreground underline underline-offset-4 hover:no-underline">
-              {plan.studentName}
-            </Link>
-          </>
+          plan.studentId ? (
+            <>
+              Aluno:{" "}
+              <Link href={`/students/${plan.studentId}`} className="font-medium text-foreground underline underline-offset-4 hover:no-underline">
+                {plan.studentName}
+              </Link>
+            </>
+          ) : (
+            "Modelo de treino: use para criar planos de alunos em um clique."
+          )
         }
-        actions={<StatusBadge tone={PLAN_STATUS_TONES[plan.status]}>{PLAN_STATUS_LABELS[plan.status]}</StatusBadge>}
+        actions={
+          plan.isTemplate ? <StatusBadge tone="info">Modelo</StatusBadge> : <StatusBadge tone={PLAN_STATUS_TONES[plan.status]}>{PLAN_STATUS_LABELS[plan.status]}</StatusBadge>
+        }
       />
 
-      {plan.status === "draft" && (
+      {plan.status === "draft" && !plan.isTemplate && (
         <p className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm">
           Este plano é um rascunho e ainda não aparece para o aluno. Publique quando estiver pronto.
         </p>
@@ -70,11 +78,26 @@ async function PlanBuilder({ params }: Pick<PageProps<"/workouts/[planId]">, "pa
 
       <Card className="gap-6 py-6 [--card-spacing:--spacing(6)]">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold"><h2>Publicação</h2></CardTitle>
-          <CardDescription>Controle o que o aluno vê.</CardDescription>
+          <CardTitle className="text-lg font-semibold"><h2>{plan.isTemplate ? "Usar este modelo" : "Duplicar"}</h2></CardTitle>
+          <CardDescription>A cópia leva treinos, exercícios, cardio e bi-sets, e começa como rascunho.</CardDescription>
         </CardHeader>
         <CardContent>
-          <PlanStatusActions planId={plan.id} status={plan.status} studentName={plan.studentName} />
+          <DuplicatePlanForm
+            planId={plan.id}
+            planName={plan.name}
+            isTemplate={plan.isTemplate}
+            students={students.filter((s) => s.status === "active").map((s) => ({ id: s.userId, name: s.fullName }))}
+          />
+        </CardContent>
+      </Card>
+
+      <Card className="gap-6 py-6 [--card-spacing:--spacing(6)]">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold"><h2>{plan.isTemplate ? "Modelo" : "Publicação"}</h2></CardTitle>
+          <CardDescription>{plan.isTemplate ? "Modelos nunca aparecem para alunos." : "Controle o que o aluno vê."}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PlanStatusActions planId={plan.id} status={plan.status} studentName={plan.studentName} isTemplate={plan.isTemplate} />
         </CardContent>
       </Card>
     </div>

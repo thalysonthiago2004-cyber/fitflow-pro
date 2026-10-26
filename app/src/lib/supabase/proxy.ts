@@ -5,7 +5,8 @@ import type { Database } from "./database.types";
 
 // Default deny: every route needs a session unless listed here, so new pages
 // are protected without having to remember to register them.
-const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/auth", "/invite"];
+// /api/cron authenticates with its own bearer secret.
+const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/auth", "/invite", "/termos", "/privacidade", "/api/cron"];
 const GUEST_ONLY_PATHS = ["/login", "/signup", "/forgot-password"];
 
 function matches(pathname: string, prefixes: string[]) {

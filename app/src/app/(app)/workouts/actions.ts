@@ -478,3 +478,27 @@ export async function leaveSuperset(itemId: string): Promise<ActionResult> {
   refresh();
   return { ok: true };
 }
+
+// Templates and duplication ------------------------------------------------------
+
+/** Copies a plan or template into a new draft for a student, or into a new template. */
+export async function duplicatePlan(planId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const target = formString(formData, "target");
+  const name = formString(formData, "name").trim();
+  const values = { target, name };
+  const ctx = await staffContext(planId);
+  if (!ctx) return { status: "error", message: GENERIC_DB_ERROR, values };
+  if (target !== "template" && !id.safeParse(target).success) {
+    return { status: "error", message: "Revise os campos destacados.", fieldErrors: { target: ["Escolha um aluno ou salve como modelo."] }, values };
+  }
+  if (name.length > 120) return { status: "error", message: "Revise os campos destacados.", fieldErrors: { name: ["Nome muito longo."] }, values };
+
+  const { data, error } = await ctx.supabase.rpc("duplicate_workout_plan", {
+    p_plan: planId,
+    // Generated RPC types mark every argument as non-null; null makes a template.
+    p_student: (target === "template" ? null : target) as string,
+    p_name: name,
+  });
+  if (error || !data) return { status: "error", message: GENERIC_DB_ERROR, values };
+  redirect(`/workouts/${data}`);
+}

@@ -89,8 +89,8 @@ The interface must feel like a polished SaaS product, not a generic fitness temp
 
 Use a high-contrast performance aesthetic.
 
-- Light theme is the default.
-- Dark theme is optional and must be fully supported.
+- The dark "Night" theme is the default (product decision, 2026-10-25).
+- The light theme must be fully supported and selectable.
 - Use lime green selectively for primary actions, progress indicators, and meaningful highlights.
 - Use generous whitespace, clear typography, restrained borders, and subtle shadows.
 - Avoid excessive gradients, heavy shadows, excessive animation, decorative glassmorphism, and visual clutter.
@@ -153,7 +153,7 @@ Components must consume semantic tokens rather than scattered hardcoded color va
 
 ### Theme behavior
 
-- Default to the light theme.
+- Default to the dark theme.
 - Respect the operating system preference on the initial visit when no explicit user preference exists.
 - Provide an accessible manual theme toggle.
 - Persist the user's preference using the project's existing solution.

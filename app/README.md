@@ -16,6 +16,7 @@ Stack: Next.js 16 (App Router, Cache Components, Partial Prefetching), React 19,
 | 6 | Body measurements, weight chart, weekly workouts, personal records, workout calorie estimate | Done |
 | 6+ | Trainer photo (shown to students), quick body assessment (tape-measure estimates + bioimpedance-scale entry), private before/after photos | Done |
 | 6+ | Cardio blocks (continuous/intervals) in workouts; supersets (bi-set, tri-set, circuit); per-set repetitions; uploaded exercise videos and per-workspace customization of catalog exercises | Done |
+| 6++ | LGPD (terms, privacy, consents, export, account deletion), closed-beta gate, plan templates and duplication, trainer attention list, PAR-Q anamnesis, load progression and history, printable report, interval timer, per-activity cardio MET, workout comments, TACO import, PWA and Web Push reminders, CSP, Sentry, CI | Done |
 | 7 | Billing, production hardening | Baseline security headers only — billing needs a provider decision |
 
 All phases were verified against a local Postgres + PostgREST stack and, on 2026-10-25, against the beta Supabase project (`fitflow-pro`, São Paulo): migrations applied, generated types in use, and the full trainer/student E2E journeys passing (see [Testing](#testing)).
@@ -25,7 +26,7 @@ All phases were verified against a local Postgres + PostgREST stack and, on 2026
 ### Known limitations
 
 - **E-mail delivery:** invitations are shared as links (copy or WhatsApp). The project uses Supabase's built-in mailer, which only delivers to members of the Supabase organization and is heavily rate-limited. During the beta, e-mail confirmation is therefore **off** and password recovery only reaches org members. Before opening sign-ups, configure custom SMTP (`[auth.email.smtp]` in `supabase/config.toml`), turn `enable_confirmations` on and enable the branded templates in `supabase/templates/`.
-- **Reminders** fire only while the app is open in the browser. Background push needs Web Push (VAPID keys) plus a server scheduler.
+- **Reminders** (water, workout of the day) are sent as Web Push every 15 minutes by a Supabase `pg_cron` job that calls `/api/cron/reminders`; inside the open app they also show as toasts. On iPhone, push requires the app installed on the home screen (iOS 16.4+).
 - **Foods** start empty on purpose: nutrient values are entered by staff with a source. Importing an official table (e.g. TACO) is a future task.
 - **Body assessment** values (body fat by the U.S. Navy circumference method, BMR by Mifflin–St Jeor) are calculated on the fly and labeled as estimates; they are never stored. Readings typed from a bioimpedance scale are stored as entered, tagged `source = 'bioimpedance'`.
 - **Photos** are resized and re-encoded to JPEG in the browser (which also strips EXIF/GPS) before upload. Avatars are public (`avatars` bucket); progress photos are private (`progress-photos` bucket, signed URLs valid for 1 h). The local test backend has no storage API, so uploads only work against a Supabase project.
@@ -77,7 +78,33 @@ The seed creates a published workout plan, a meal plan (foods marked as example 
 
 ## Deployment
 
-Production runs on Netlify (`netlify.toml`), site `fitflow-pro`, currently behind Netlify team login. The same setup works on Vercel. Set the three `NEXT_PUBLIC_*` variables in the project settings, with `NEXT_PUBLIC_SITE_URL` set to the production domain, and add that domain's `/auth/confirm` to Supabase's redirect URLs. No other secrets are required until billing is added.
+Production runs on **Vercel in São Paulo** (`vercel.json` pins the `gru1` region, next to the Supabase project in `sa-east-1`): https://fitflow-pro-xi.vercel.app. `.vercelignore` keeps `.env*` and local state out of uploads. The earlier Netlify site (`netlify.toml`) is no longer updated.
+
+Environment variables (Vercel → Settings → Environment Variables; see `.env.example`):
+
+| Variable | Notes |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL` | Required. Add `<site-url>/auth/confirm` to Supabase redirect URLs (`supabase/config.toml`). |
+| `BETA_SIGNUP_REQUIRED` | `1` while the beta is closed. |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Web Push. |
+| `CRON_SECRET`, `SUPABASE_SECRET_KEY` | Reminder endpoint only. Sensitive. |
+| `NEXT_PUBLIC_SENTRY_DSN` | Optional error monitoring; collection of cookies, headers, bodies and user data is disabled (`src/lib/sentry-options.ts`). |
+
+**Closed beta.** Trainer sign-ups need a code while `private.settings` holds its hash; the sign-up trigger enforces it, so the Auth API cannot be used to skip it. Rotate or remove it with `npx supabase db query --linked`:
+
+```sql
+insert into private.settings (key, value) values ('beta_code_sha256', private.hash_token(upper('NEW-CODE')))
+  on conflict (key) do update set value = excluded.value;   -- or: delete from private.settings where key = 'beta_code_sha256';
+```
+
+**Reminders.** A `pg_cron` job (`fitflow-reminders`, every 15 min) posts to `/api/cron/reminders` via `pg_net`, reading the URL and bearer secret from Vault (`reminders_url`, `reminders_secret`). The database decides what is due and records each delivery once (`claim_due_reminders`); the endpoint sends the pushes and removes dead subscriptions. Set the Vault secrets once per environment:
+
+```sql
+select vault.create_secret('https://<site>/api/cron/reminders', 'reminders_url');
+select vault.create_secret('<CRON_SECRET>', 'reminders_secret');
+```
+
+**Data import.** `src/lib/nutrition/taco.json` is generated from the official TACO 4ª ed. spreadsheet by `scripts/taco/build_taco.py` (see the script for the conversion rules).
 
 ## Testing
 

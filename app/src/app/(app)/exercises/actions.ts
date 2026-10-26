@@ -127,6 +127,30 @@ async function editableExercise(exerciseId: string) {
   return { user, supabase, exercise, custom, isGlobal: exercise.workspace_id === null };
 }
 
+const ORPHAN_AGE_MS = 3 * 60 * 60 * 1000;
+
+/**
+ * Removes this workspace's uploaded videos that no exercise or customization
+ * points at (an upload that never got attached, or a replaced file whose
+ * removal failed). Files younger than 3 h are kept: they may be mid-upload.
+ */
+async function removeOrphanVideos(ctx: Ctx) {
+  const workspaceId = ctx.user.workspace.id;
+  const [{ data: files }, { data: own }, { data: custom }] = await Promise.all([
+    ctx.supabase.storage.from("exercise-videos").list(workspaceId, { limit: 1000 }),
+    ctx.supabase.from("exercises").select("video_path").eq("workspace_id", workspaceId).not("video_path", "is", null),
+    ctx.supabase.from("exercise_customizations").select("video_path").eq("workspace_id", workspaceId).not("video_path", "is", null),
+  ]);
+  if (!files) return;
+  const used = new Set([...(own ?? []), ...(custom ?? [])].map((r) => r.video_path));
+  const cutoff = Date.now() - ORPHAN_AGE_MS;
+  const orphans = files
+    .filter((f) => f.created_at && Date.parse(f.created_at) < cutoff)
+    .map((f) => `${workspaceId}/${f.name}`)
+    .filter((path) => !used.has(path));
+  if (orphans.length) await ctx.supabase.storage.from("exercise-videos").remove(orphans);
+}
+
 /** Step 1: a one-time signed URL the browser uploads the video to directly (no size limit from server actions). */
 export async function requestVideoUpload(exerciseId: string, contentType: string, size: number): Promise<UploadTicket> {
   const ctx = await editableExercise(exerciseId);
@@ -135,6 +159,7 @@ export async function requestVideoUpload(exerciseId: string, contentType: string
   if (!ext) return { ok: false, message: "Formato não suportado. Envie um vídeo MP4, MOV ou WebM." };
   if (!Number.isFinite(size) || size <= 0 || size > VIDEO_MAX_BYTES) return { ok: false, message: "O vídeo pode ter no máximo 50 MB. Grave um trecho mais curto." };
 
+  await removeOrphanVideos(ctx);
   const path = `${ctx.user.workspace.id}/${crypto.randomUUID()}.${ext}`;
   const { data, error } = await ctx.supabase.storage.from("exercise-videos").createSignedUploadUrl(path);
   if (error || !data) return { ok: false, message: "Não foi possível preparar o envio. Tente novamente." };

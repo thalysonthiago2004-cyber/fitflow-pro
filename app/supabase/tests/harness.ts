@@ -11,7 +11,8 @@ const MIGRATIONS_DIR = join(__dirname, "..", "migrations");
 export const SUPABASE_STUB = `
   create role anon nologin;
   create role authenticated nologin;
-  grant usage on schema public to anon, authenticated;
+  create role service_role nologin bypassrls;
+  grant usage on schema public to anon, authenticated, service_role;
 
   create schema auth;
   grant usage on schema auth to anon, authenticated;

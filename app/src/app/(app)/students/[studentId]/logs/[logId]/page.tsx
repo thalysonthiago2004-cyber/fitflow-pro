@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { LogView } from "@/components/workouts/log-view";
+import { WorkoutComments } from "@/components/workouts/workout-comments";
 import { requireStaff } from "@/lib/auth/dal";
 import { formatLongDate, todayISO } from "@/lib/format";
 import { getLog } from "@/lib/workouts/queries";
@@ -17,7 +18,7 @@ const UUID = /^[0-9a-f-]{36}$/i;
 async function LogContent({ params }: Pick<PageProps<"/students/[studentId]/logs/[logId]">, "params">) {
   const { studentId, logId } = await params;
   if (!UUID.test(logId) || !UUID.test(studentId)) notFound();
-  await requireStaff();
+  const user = await requireStaff();
   const log = await getLog(logId);
   if (!log || log.studentId !== studentId) notFound();
 
@@ -28,6 +29,7 @@ async function LogContent({ params }: Pick<PageProps<"/students/[studentId]/logs
         description={log.completedAt ? `Concluído em ${formatLongDate(log.completedAt)}` : "Treino em andamento"}
       />
       <LogView log={log} weightKg={log.completedAt ? await getWeightOn(log.studentId, todayISO(new Date(log.completedAt))) : null} />
+      {log.completedAt && <WorkoutComments logId={log.id} viewerId={user.id} />}
     </div>
   );
 }

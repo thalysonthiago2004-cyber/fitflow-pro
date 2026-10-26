@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import type { CardioIntensity, CardioMode, Equipment, MuscleGroup, PlanStatus } from "@/lib/supabase/database.types";
+import type { LastPerformance } from "./progression";
 
 // Every query runs with the caller's session; RLS decides visibility.
 
@@ -26,8 +27,10 @@ export type PlanSummary = {
   id: string;
   name: string;
   status: PlanStatus;
-  studentId: string;
+  /** Null for templates. */
+  studentId: string | null;
   studentName: string;
+  isTemplate: boolean;
   startsOn: string | null;
   endsOn: string | null;
   updatedAt: string;
@@ -122,6 +125,8 @@ export type LogDetail = LogSummary & {
   exercises: Prescription[];
   sets: SetLog[];
   cardio: CardioLog[];
+  /** Last completed performance of each exercise (by exercise id) before this workout. */
+  previous: Record<string, LastPerformance>;
 };
 
 type ExerciseRow = {
@@ -223,13 +228,14 @@ async function profileNames(ids: string[]): Promise<Map<string, string>> {
   return new Map(data.map((p) => [p.id, p.full_name]));
 }
 
-type PlanFilter = { workspaceId?: string; studentId?: string; statuses?: PlanStatus[] };
+type PlanFilter = { workspaceId?: string; studentId?: string; statuses?: PlanStatus[]; templates?: boolean };
 
 export async function listPlans(filter: PlanFilter): Promise<PlanSummary[]> {
   const supabase = await createClient();
   let query = supabase
     .from("workout_plans")
-    .select("id, name, status, student_id, starts_on, ends_on, updated_at")
+    .select("id, name, status, student_id, is_template, starts_on, ends_on, updated_at")
+    .eq("is_template", filter.templates ?? false)
     .order("updated_at", { ascending: false });
   if (filter.workspaceId) query = query.eq("workspace_id", filter.workspaceId);
   if (filter.studentId) query = query.eq("student_id", filter.studentId);
@@ -237,13 +243,14 @@ export async function listPlans(filter: PlanFilter): Promise<PlanSummary[]> {
   const { data, error } = await query;
   if (error) fail("plans", error);
 
-  const names = await profileNames(data.map((p) => p.student_id));
+  const names = await profileNames(data.flatMap((p) => (p.student_id ? [p.student_id] : [])));
   return data.map((p) => ({
     id: p.id,
     name: p.name,
     status: p.status,
     studentId: p.student_id,
-    studentName: names.get(p.student_id) ?? "Aluno",
+    studentName: p.student_id ? (names.get(p.student_id) ?? "Aluno") : "Modelo",
+    isTemplate: p.is_template,
     startsOn: p.starts_on,
     endsOn: p.ends_on,
     updatedAt: p.updated_at,
@@ -255,29 +262,29 @@ async function loadSessions(planIds: string[]): Promise<Map<string, SessionDetai
   if (planIds.length === 0) return byPlan;
   const supabase = await createClient();
 
+  // One round trip: sessions with their items, exercises and this workspace's
+  // customizations (RLS returns only the caller's). Signing videos is a second
+  // call only when some exercise has an uploaded video.
   const { data: sessions, error } = await supabase
     .from("workout_sessions")
-    .select("id, plan_id, name, weekdays, position, created_at")
+    .select(
+      "id, plan_id, name, weekdays, position, created_at, session_exercises(id, session_id, position, kind, sets, reps_min, reps_max, reps_per_set, superset_group, load_kg, rest_seconds, notes, cardio_mode, duration_minutes, distance_km, intensity, hr_min, hr_max, speed_kmh, incline_pct, rounds, work_seconds, created_at, exercises(id, workspace_id, name, muscle_group, equipment, instructions, video_url, video_path, exercise_customizations(instructions, video_url, video_path)))",
+    )
     .in("plan_id", planIds)
     .order("position")
-    .order("created_at");
+    .order("created_at")
+    .order("position", { referencedTable: "session_exercises" })
+    .order("created_at", { referencedTable: "session_exercises" });
   if (error) fail("sessions", error);
 
-  const sessionIds = sessions.map((s) => s.id);
-  const { data: items, error: itemsError } = sessionIds.length
-    ? await supabase
-        .from("session_exercises")
-        .select(
-          "id, session_id, position, kind, sets, reps_min, reps_max, reps_per_set, superset_group, load_kg, rest_seconds, notes, cardio_mode, duration_minutes, distance_km, intensity, hr_min, hr_max, speed_kmh, incline_pct, rounds, work_seconds, created_at, exercises(id, workspace_id, name, muscle_group, equipment, instructions, video_url, video_path)",
-        )
-        .in("session_id", sessionIds)
-        .order("position")
-        .order("created_at")
-    : { data: [], error: null };
-  if (itemsError) fail("session exercises", itemsError);
-  const custom = await customizationsFor(items.flatMap((i) => (i.exercises?.workspace_id === null ? [i.exercises.id] : [])));
+  const items = sessions.flatMap((session) => session.session_exercises);
   // One Exercise object per item, so signed URLs can be filled in place.
-  const exerciseByItem = new Map(items.filter((i) => i.exercises).map((i) => [i.id, toExercise(i.exercises!, custom.get(i.exercises!.id))]));
+  const exerciseByItem = new Map(
+    items.filter((i) => i.exercises).map((i) => {
+      const { exercise_customizations: custom, ...row } = i.exercises!;
+      return [i.id, toExercise(row, row.workspace_id === null ? custom[0] : undefined)];
+    }),
+  );
   await withVideoUrls([...exerciseByItem.values()]);
 
   for (const session of sessions) {
@@ -328,13 +335,13 @@ export async function getPlan(planId: string): Promise<PlanDetail | null> {
   const supabase = await createClient();
   const { data: plan, error } = await supabase
     .from("workout_plans")
-    .select("id, workspace_id, name, notes, status, student_id, starts_on, ends_on, updated_at")
+    .select("id, workspace_id, name, notes, status, student_id, is_template, starts_on, ends_on, updated_at")
     .eq("id", planId)
     .maybeSingle();
   if (error) fail("plan", error);
   if (!plan) return null;
 
-  const [names, sessions] = await Promise.all([profileNames([plan.student_id]), loadSessions([plan.id])]);
+  const [names, sessions] = await Promise.all([profileNames(plan.student_id ? [plan.student_id] : []), loadSessions([plan.id])]);
   return {
     id: plan.id,
     workspaceId: plan.workspace_id,
@@ -342,7 +349,8 @@ export async function getPlan(planId: string): Promise<PlanDetail | null> {
     notes: plan.notes,
     status: plan.status,
     studentId: plan.student_id,
-    studentName: names.get(plan.student_id) ?? "Aluno",
+    studentName: plan.student_id ? (names.get(plan.student_id) ?? "Aluno") : "Modelo",
+    isTemplate: plan.is_template,
     startsOn: plan.starts_on,
     endsOn: plan.ends_on,
     updatedAt: plan.updated_at,
@@ -435,6 +443,11 @@ export async function getLog(logId: string): Promise<LogDetail | null> {
   if (sets.error) fail("sets", sets.error);
   if (cardio.error) fail("cardio", cardio.error);
   const session = sessions.get(log.plan_id)?.find((s) => s.id === log.session_id);
+  const previous = await lastPerformances(
+    log.student_id,
+    log.id,
+    (session?.exercises ?? []).flatMap((e) => (e.kind === "strength" ? [e.exercise.id] : [])),
+  );
 
   return {
     id: log.id,
@@ -465,5 +478,40 @@ export async function getLog(logId: string): Promise<LogDetail | null> {
       roundsDone: c.rounds_done,
       completed: c.completed,
     })),
+    previous,
   };
+}
+
+/** For each exercise, the sets of the student's most recent other completed workout that included it (last 120 days). */
+async function lastPerformances(studentId: string, excludeLogId: string, exerciseIds: string[]): Promise<Record<string, LastPerformance>> {
+  if (exerciseIds.length === 0) return {};
+  const supabase = await createClient();
+  const since = new Date(Date.now() - 120 * 86_400_000).toISOString();
+  const { data, error } = await supabase
+    .from("set_logs")
+    .select("log_id, set_number, reps, load_kg, completed, session_exercises!inner(exercise_id), workout_logs!inner(student_id, completed_at)")
+    .eq("workout_logs.student_id", studentId)
+    .gte("workout_logs.completed_at", since)
+    .neq("log_id", excludeLogId)
+    .in("session_exercises.exercise_id", [...new Set(exerciseIds)]);
+  if (error) fail("previous sets", error);
+
+  const latestLog = new Map<string, { logId: string; completedAt: string }>();
+  for (const row of data) {
+    const exerciseId = row.session_exercises.exercise_id;
+    const completedAt = row.workout_logs.completed_at!;
+    const current = latestLog.get(exerciseId);
+    if (!current || completedAt > current.completedAt) latestLog.set(exerciseId, { logId: row.log_id, completedAt });
+  }
+  const result: Record<string, LastPerformance> = {};
+  for (const [exerciseId, { logId, completedAt }] of latestLog) {
+    result[exerciseId] = {
+      date: completedAt,
+      sets: data
+        .filter((row) => row.log_id === logId && row.session_exercises.exercise_id === exerciseId)
+        .map((row) => ({ setNumber: row.set_number, reps: row.reps, loadKg: num(row.load_kg), completed: row.completed }))
+        .sort((a, b) => a.setNumber - b.setNumber),
+    };
+  }
+  return result;
 }

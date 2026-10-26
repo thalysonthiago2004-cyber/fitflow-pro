@@ -7,7 +7,7 @@ async function expectNoHorizontalOverflow(page: import("@playwright/test").Page)
   expect(overflow).toBe(false);
 }
 
-for (const path of ["/", "/login", "/signup", "/forgot-password", "/auth/error"]) {
+for (const path of ["/", "/login", "/signup", "/forgot-password", "/auth/error", "/termos", "/privacidade"]) {
   test(`${path} renders without horizontal overflow`, async ({ page }) => {
     await page.goto(path);
     await expect(page.locator("h1")).toBeVisible();
@@ -23,7 +23,7 @@ test("home links to sign-up and login", async ({ page }) => {
 });
 
 test.describe("guest redirects", () => {
-  for (const path of ["/dashboard", "/settings", "/reset-password", "/students", "/students/invite", "/assessments", "/workouts", "/workouts/new", "/exercises", "/training", "/training/history", "/hydration", "/nutrition", "/foods", "/meals", "/progress"]) {
+  for (const path of ["/dashboard", "/settings", "/reset-password", "/students", "/students/invite", "/assessments", "/anamnese", "/foods/taco", "/workouts", "/workouts/new", "/exercises", "/training", "/training/history", "/hydration", "/nutrition", "/foods", "/meals", "/progress"]) {
     test(`${path} redirects to login and keeps the destination`, async ({ page }) => {
       await page.goto(path);
       await expect(page).toHaveURL(`/login?next=${encodeURIComponent(path)}`);
@@ -104,4 +104,29 @@ test.describe("student invitation page", () => {
       await expect(page.getByRole("link", { name: "Ir para o login" })).toBeVisible();
     });
   }
+});
+
+test("pages load without Content-Security-Policy violations", async ({ page }) => {
+  const violations: string[] = [];
+  page.on("console", (message) => {
+    if (/Content Security Policy|Refused to/i.test(message.text())) violations.push(message.text());
+  });
+  for (const path of ["/", "/login", "/signup", "/termos"]) {
+    await page.goto(path);
+    await page.waitForLoadState("networkidle");
+  }
+  expect(violations).toEqual([]);
+});
+
+test("the app is installable", async ({ request }) => {
+  const manifest = await (await request.get("/manifest.webmanifest")).json();
+  expect(manifest).toMatchObject({ name: "FitFlow Pro", display: "standalone", start_url: "/dashboard" });
+  const worker = await request.get("/sw.js");
+  expect(worker.status()).toBe(200);
+  expect(await worker.text()).toContain('addEventListener("push"');
+  expect((await request.get("/icons/icon-512.png")).status()).toBe(200);
+});
+
+test("the reminder endpoint rejects calls without the secret", async ({ request }) => {
+  expect((await request.post("/api/cron/reminders")).status()).toBe(401);
 });

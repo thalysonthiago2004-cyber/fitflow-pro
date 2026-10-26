@@ -1,8 +1,32 @@
 import type { NextConfig } from "next";
 
-// Baseline hardening. A full Content-Security-Policy needs nonces for Next's
-// inline scripts and is left for the deployment phase.
+const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).host : "";
+const dev = process.env.NODE_ENV === "development";
+
+// Content-Security-Policy. Scripts may only come from this origin; inline
+// scripts stay allowed because prerendered pages cannot carry per-request
+// nonces. Data, images, uploads and videos may only go to or come from
+// Supabase; embedded players are limited to YouTube (no-cookie) and Vimeo.
+const csp = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""}`,
+  "style-src 'self' 'unsafe-inline'",
+  `img-src 'self' data: blob: https://${supabase}`,
+  `media-src 'self' blob: https://${supabase}`,
+  `connect-src 'self' https://${supabase} wss://${supabase} https://*.ingest.sentry.io https://*.ingest.us.sentry.io`,
+  "frame-src https://www.youtube-nocookie.com https://player.vimeo.com",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "font-src 'self' data:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  ...(dev ? [] : ["upgrade-insecure-requests"]),
+].join("; ");
+
 const securityHeaders = [
+  { key: "Content-Security-Policy", value: csp },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -16,8 +40,8 @@ const nextConfig: NextConfig = {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
   experimental: {
-    // Photos are resized in the browser (≤ 4 MB); Netlify caps requests at 6 MB.
-    serverActions: { bodySizeLimit: "5mb" },
+    // Photos are resized in the browser (≤ 3.5 MB); Vercel caps requests at 4.5 MB.
+    serverActions: { bodySizeLimit: "4mb" },
   },
   cacheComponents: true,
   partialPrefetching: true,

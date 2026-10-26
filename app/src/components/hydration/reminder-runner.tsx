@@ -35,8 +35,8 @@ function writeLast(value: number) {
   }
 }
 
-// In-app hydration reminders. Runs only while the app is open; background push
-// would need Web Push (VAPID keys + a server scheduler), which is not set up.
+// In-app hydration reminders while the app is open. With the app closed, the
+// server sends the same reminders as Web Push (see /api/cron/reminders).
 export function ReminderRunner({ prefs, goalReached }: { prefs: ReminderPrefs; goalReached: boolean }) {
   useEffect(() => {
     if (!prefs.enabled || goalReached) return;
