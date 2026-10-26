@@ -1394,6 +1394,10 @@ export type Database = {
         }[]
       }
       delete_my_account: { Args: never; Returns: undefined }
+      duplicate_meal_plan: {
+        Args: { p_name: string; p_plan: string; p_student: string }
+        Returns: string
+      }
       duplicate_workout_plan: {
         Args: { p_name: string; p_plan: string; p_student: string }
         Returns: string

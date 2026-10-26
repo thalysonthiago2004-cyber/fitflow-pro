@@ -708,6 +708,21 @@ test("@supabase starter templates and the getting-started checklist", async ({ p
   await expect(page.getByRole("button", { name: "Adicionar modelos prontos" })).toHaveCount(0);
 });
 
+test("@supabase a meal plan is duplicated with its meals and foods", async ({ page }) => {
+  await login(page, trainer.email, trainer.password);
+  await page.goto("/nutrition");
+  await page.getByRole("link", { name: /Plano de novembro/ }).first().click();
+  await page.getByRole("heading", { level: 3 }).filter({ visible: true }).first().waitFor();
+  const meals = await page.getByRole("heading", { level: 3 }).filter({ visible: true }).allTextContents();
+  expect(meals.length).toBeGreaterThan(0);
+  await page.getByLabel("Para qual aluno").selectOption({ label: student.name });
+  await page.getByLabel("Nome da cópia").fill("Plano de dezembro");
+  await page.getByRole("button", { name: "Duplicar plano alimentar" }).click();
+  await expect(page.getByRole("heading", { name: "Plano de dezembro" })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Rascunho", { exact: true }).filter({ visible: true }).first()).toBeVisible();
+  await expect.poll(() => page.getByRole("heading", { level: 3 }).filter({ visible: true }).allTextContents()).toEqual(meals);
+});
+
 test("@supabase students reach their trainer on WhatsApp", async ({ browser, page }) => {
   await login(page, trainer.email, trainer.password);
   await page.goto("/settings");

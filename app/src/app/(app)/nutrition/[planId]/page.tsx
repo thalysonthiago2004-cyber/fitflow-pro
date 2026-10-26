@@ -10,8 +10,10 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireStaff } from "@/lib/auth/dal";
 import { getMealPlan, listFoods } from "@/lib/nutrition/queries";
+import { listStudents } from "@/lib/students/queries";
 import { PLAN_STATUS_LABELS, PLAN_STATUS_TONES } from "@/lib/workouts/labels";
 import { AddMealForm } from "./add-meal-form";
+import { DuplicateMealPlanForm } from "./duplicate-meal-plan-form";
 import { MealCard } from "./meal-card";
 import { MealPlanDetailsForm, MealPlanStatusActions } from "./meal-plan-forms";
 
@@ -21,7 +23,7 @@ async function Builder({ params }: Pick<PageProps<"/nutrition/[planId]">, "param
   const { planId } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(planId)) notFound();
   const user = await requireStaff();
-  const [plan, foods] = await Promise.all([getMealPlan(planId), listFoods(user.workspace.id)]);
+  const [plan, foods, students] = await Promise.all([getMealPlan(planId), listFoods(user.workspace.id), listStudents(user.workspace.id)]);
   if (!plan || plan.workspaceId !== user.workspace.id) notFound();
   const pickable = foods.map(({ id, name, basis, unitLabel, unitAmount }) => ({ id, name, basis, unitLabel, unitAmount }));
 
@@ -67,6 +69,16 @@ async function Builder({ params }: Pick<PageProps<"/nutrition/[planId]">, "param
           <CardTitle className="text-lg font-semibold"><h2>Detalhes do plano</h2></CardTitle>
         </CardHeader>
         <CardContent><MealPlanDetailsForm planId={plan.id} name={plan.name} notes={plan.notes} /></CardContent>
+      </Card>
+
+      <Card className="gap-6 py-6 [--card-spacing:--spacing(6)]">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold"><h2>Duplicar</h2></CardTitle>
+          <CardDescription>A cópia leva refeições, horários e alimentos, e começa como rascunho.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DuplicateMealPlanForm planId={plan.id} planName={plan.name} students={students.filter((s) => s.status === "active").map((s) => ({ id: s.userId, name: s.fullName }))} />
+        </CardContent>
       </Card>
 
       <Card className="gap-6 py-6 [--card-spacing:--spacing(6)]">

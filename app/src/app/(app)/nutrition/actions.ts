@@ -10,6 +10,7 @@ import { mealItemSchema, mealPlanSchema, mealSchema, newMealPlanSchema } from "@
 import { moveInList } from "@/lib/reorder";
 import { GENERIC_DB_ERROR } from "@/lib/students/errors";
 import type { PlanStatus } from "@/lib/supabase/database.types";
+import { RATE_LIMITED, allow } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 export type ActionResult = { ok: true } | { ok: false; message: string };
@@ -218,4 +219,22 @@ export async function deleteMealItem(itemId: string): Promise<ActionResult> {
   if (error || !data?.length) return { ok: false, message: GENERIC_DB_ERROR };
   refresh();
   return { ok: true };
+}
+
+/** Copies a meal plan, with its meals and foods, into a new draft for a student. */
+export async function duplicateMealPlan(planId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const target = formString(formData, "target");
+  const name = formString(formData, "name").trim();
+  const values = { target, name };
+  const ctx = await staffContext(planId);
+  if (!ctx) return { status: "error", message: GENERIC_DB_ERROR, values };
+  if (!z.uuid().safeParse(target).success) {
+    return { status: "error", message: "Revise os campos destacados.", fieldErrors: { target: ["Escolha um aluno."] }, values };
+  }
+  if (name.length > 120) return { status: "error", message: "Revise os campos destacados.", fieldErrors: { name: ["Nome muito longo."] }, values };
+  if (!(await allow(ctx.supabase, "duplicate_plan"))) return { status: "error", message: RATE_LIMITED, values };
+
+  const { data, error } = await ctx.supabase.rpc("duplicate_meal_plan", { p_plan: planId, p_student: target, p_name: name });
+  if (error || !data) return { status: "error", message: GENERIC_DB_ERROR, values };
+  redirect(`/nutrition/${data}`);
 }
