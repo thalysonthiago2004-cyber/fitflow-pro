@@ -512,7 +512,8 @@ test("@supabase bi-set with per-set reps and the trainer's own video", async ({ 
   await page.getByRole("button", { name: "Salvar para meus alunos" }).click();
   await expect(page.getByText("Personalização salva. Seus alunos já veem esta versão.").filter({ visible: true })).toBeVisible();
   await page.getByLabel("Vídeo de demonstração").setInputFiles(await webm(page));
-  await expect(page.getByText("Vídeo enviado. Seus alunos já podem assistir.").filter({ visible: true })).toBeVisible();
+  // Upload + attach crosses the network twice; allow for a slow first storage call.
+  await expect(page.getByText("Vídeo enviado. Seus alunos já podem assistir.").filter({ visible: true })).toBeVisible({ timeout: 15_000 });
   await expect(page.locator("video")).toHaveAttribute("src", /\/storage\/v1\/object\/sign\/exercise-videos\//);
 
   // Bi-set: French press with a 12/10/8 pyramid, then bench dips.
