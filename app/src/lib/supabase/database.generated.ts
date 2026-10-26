@@ -738,6 +738,7 @@ export type Database = {
         Row: {
           avatar_path: string | null
           created_at: string
+          firebase_uid: string | null
           full_name: string
           id: string
           role: Database["public"]["Enums"]["user_role"]
@@ -747,6 +748,7 @@ export type Database = {
         Insert: {
           avatar_path?: string | null
           created_at?: string
+          firebase_uid?: string | null
           full_name: string
           id: string
           role: Database["public"]["Enums"]["user_role"]
@@ -756,6 +758,7 @@ export type Database = {
         Update: {
           avatar_path?: string | null
           created_at?: string
+          firebase_uid?: string | null
           full_name?: string
           id?: string
           role?: Database["public"]["Enums"]["user_role"]
@@ -1368,6 +1371,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      find_auth_user_by_email: {
+        Args: { p_email: string }
+        Returns: {
+          firebase_uid: string
+          user_id: string
+        }[]
+      }
       accept_invitation: { Args: { p_token: string }; Returns: string }
       check_rate_limit: {
         Args: { p_action: string; p_max: number; p_window_seconds: number }

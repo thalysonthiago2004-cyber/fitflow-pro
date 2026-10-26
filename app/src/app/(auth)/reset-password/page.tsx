@@ -9,8 +9,8 @@ export const metadata: Metadata = { title: "Nova senha" };
 // Reached from the recovery e-mail (after /auth/confirm) or from settings.
 // The proxy already redirects guests; this re-checks the session server-side.
 async function AuthorizedForm() {
-  await requireUser();
-  return <ResetPasswordForm />;
+  const user = await requireUser();
+  return <ResetPasswordForm email={user.email} />;
 }
 
 export default function ResetPasswordPage() {

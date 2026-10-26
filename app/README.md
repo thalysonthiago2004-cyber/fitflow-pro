@@ -25,7 +25,8 @@ All phases were verified against a local Postgres + PostgREST stack and, on 2026
 
 ### Known limitations
 
-- **E-mail delivery:** invitations are shared as links (copy or WhatsApp). Auth e-mails go through **Resend SMTP** with the branded pt-BR templates (`supabase/templates/`); push the config with `RESEND_API_KEY=… npx supabase config push`. The sender is still Resend's test address (`onboarding@resend.dev`), which only delivers to the Resend account owner, so e-mail confirmation stays **off**. Next step: verify a domain in Resend, set `admin_email` to it, then turn `enable_confirmations` on.
+- **Login (Firebase Authentication):** when `NEXT_PUBLIC_FIREBASE_*` is set, Firebase checks e-mail/password, verifies the e-mail and sends the reset e-mail (free sender `noreply@<project>.firebaseapp.com`, no domain needed). The server verifies the ID token with Google's public keys (`src/lib/firebase/verify.ts`, no service account), requires a sign-in from the last 10 minutes, then opens the Supabase session for the linked account (`profiles.firebase_uid`), so RLS keeps working on `auth.uid()`. Firebase keeps no session in the browser (in-memory only); the session is the Supabase one in httpOnly cookies. Accounts created before Firebase are linked on their first sign-in, after their Supabase password is checked. Without the Firebase env (local backend, CI) the forms fall back to Supabase e-mail/password.
+- **E-mail delivery:** invitations are shared as links (copy or WhatsApp). Supabase auth e-mails (only used without Firebase) go through Resend SMTP with the templates in `supabase/templates/`.
 - **Reminders** (water, workout of the day) are sent as Web Push every 15 minutes by a Supabase `pg_cron` job that calls `/api/cron/reminders`; inside the open app they also show as toasts. On iPhone, push requires the app installed on the home screen (iOS 16.4+).
 - **Foods** start empty on purpose: nutrient values are entered by staff with a source. Importing an official table (e.g. TACO) is a future task.
 - **Body assessment** values (body fat by the U.S. Navy circumference method, BMR by Mifflin–St Jeor) are calculated on the fly and labeled as estimates; they are never stored. Readings typed from a bioimpedance scale are stored as entered, tagged `source = 'bioimpedance'`.
@@ -85,6 +86,8 @@ Environment variables (Vercel → Settings → Environment Variables; see `.env.
 | Variable | Notes |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL` | Required. Add `<site-url>/auth/confirm` to Supabase redirect URLs (`supabase/config.toml`). |
+| `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID` | Optional; turns on Firebase login. Public web config (not secrets). In the Firebase console: enable Email/Password, add the site domain to *Authorized domains*, set the e-mail templates to Portuguese. |
+| `E2E_ALLOW_UNVERIFIED_EMAIL` | Test runs only: `1` lets unverified Firebase e-mails sign in. Ignored when `VERCEL_ENV=production`. |
 | `BETA_SIGNUP_REQUIRED` | `1` while the beta is closed. |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Web Push. |
 | `CRON_SECRET`, `SUPABASE_SECRET_KEY` | Reminder endpoint only. Sensitive. |

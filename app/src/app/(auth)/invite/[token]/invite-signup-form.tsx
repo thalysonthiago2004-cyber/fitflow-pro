@@ -7,11 +7,13 @@ import { FormField } from "@/components/forms/form-field";
 import { FormMessage } from "@/components/forms/form-message";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { initialFormState } from "@/lib/auth/schemas";
+import { firebaseEnabled } from "@/lib/firebase/config";
+import { FirebaseInviteSignupForm } from "./firebase-invite-signup-form";
 import { signupWithInvite } from "../../actions";
 
 type Props = { token: string; email: string; suggestedName: string };
 
-export function InviteSignupForm({ token, email, suggestedName }: Props) {
+function SupabaseInviteSignupForm({ token, email, suggestedName }: Props) {
   const [state, action, pending] = useActionState(signupWithInvite.bind(null, token), initialFormState);
 
   if (state.status === "success") return <FormMessage state={state} />;
@@ -49,4 +51,8 @@ export function InviteSignupForm({ token, email, suggestedName }: Props) {
       </SubmitButton>
     </form>
   );
+}
+
+export function InviteSignupForm(props: Props) {
+  return firebaseEnabled ? <FirebaseInviteSignupForm {...props} /> : <SupabaseInviteSignupForm {...props} />;
 }

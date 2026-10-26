@@ -11,6 +11,8 @@ import { SubmitButton } from "@/components/forms/submit-button";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/user-avatar";
 import { initialFormState } from "@/lib/auth/schemas";
+import { firebaseEnabled } from "@/lib/firebase/config";
+import { deleteAccountFlow } from "@/lib/firebase/flows";
 import { formatNumber, todayISO } from "@/lib/format";
 import { formatWhatsapp } from "@/lib/phone";
 import { UnsupportedImageError, prepareImage } from "@/lib/images/prepare";
@@ -170,8 +172,22 @@ export function BodyProfileForm({ sex, heightCm, birthDate }: { sex: string | nu
   );
 }
 
-export function DeleteAccount({ ownsWorkspace }: { ownsWorkspace: boolean }) {
+export function DeleteAccount({ email, ownsWorkspace }: { email: string; ownsWorkspace: boolean }) {
   const [confirmation, setConfirmation] = useState("");
+  const [password, setPassword] = useState("");
+
+  async function confirm() {
+    const result = firebaseEnabled
+      ? password
+        ? await deleteAccountFlow(email, password, () => deleteAccount(confirmation))
+        : { ok: false as const, message: "Informe sua senha para confirmar." }
+      : await deleteAccount(confirmation);
+    // A full load drops every cached page of the deleted account.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    if (result.ok) window.location.assign("/login?conta=excluida");
+    return result;
+  }
+
   return (
     <div className="grid gap-3 rounded-lg border border-destructive/40 p-4">
       <p className="text-sm">
@@ -184,7 +200,7 @@ export function DeleteAccount({ ownsWorkspace }: { ownsWorkspace: boolean }) {
         title="Excluir sua conta definitivamente?"
         description={
           <span className="grid gap-3">
-            <span>Essa ação não pode ser desfeita. Digite EXCLUIR para confirmar.</span>
+            <span>Essa ação não pode ser desfeita. Digite EXCLUIR{firebaseEnabled ? " e sua senha" : ""} para confirmar.</span>
             <input
               aria-label="Digite EXCLUIR para confirmar"
               value={confirmation}
@@ -192,11 +208,22 @@ export function DeleteAccount({ ownsWorkspace }: { ownsWorkspace: boolean }) {
               autoComplete="off"
               className="h-11 rounded-lg border border-input bg-transparent px-3 text-base text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
             />
+            {firebaseEnabled && (
+              <input
+                type="password"
+                aria-label="Sua senha"
+                placeholder="Sua senha"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                className="h-11 rounded-lg border border-input bg-transparent px-3 text-base text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              />
+            )}
           </span>
         }
         confirmLabel="Excluir conta"
         destructive
-        onConfirm={() => deleteAccount(confirmation)}
+        onConfirm={confirm}
       />
     </div>
   );

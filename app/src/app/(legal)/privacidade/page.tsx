@@ -32,7 +32,10 @@ export default function PrivacyPage() {
         <li>Você e, no caso de alunos, o personal que enviou o convite. Outros alunos e outros personais não têm acesso.</li>
         <li>
           Fornecedores que operam a infraestrutura em nosso nome: Supabase (banco de dados, autenticação e arquivos, com servidores em São Paulo)
-          e Vercel (hospedagem do aplicativo). Quando ativado, o Sentry recebe relatórios técnicos de erros, sem dados de saúde.
+          e Vercel (hospedagem do aplicativo). O login é feito pelo Google Firebase Authentication, que recebe apenas seu e-mail e sua senha
+          (guardada de forma cifrada) para confirmar seu acesso e enviar os e-mails de confirmação e de redefinição de senha; ele pode tratar
+          esses dados em servidores fora do Brasil, com as garantias previstas na LGPD. Quando ativado, o Sentry recebe relatórios técnicos
+          de erros, sem dados de saúde.
           Eles só tratam os dados para prestar esse serviço.
         </li>
         <li>Não vendemos dados pessoais.</li>

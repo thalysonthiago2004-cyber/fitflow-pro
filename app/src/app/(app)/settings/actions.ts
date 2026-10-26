@@ -1,7 +1,6 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth/dal";
 import { formString, validationError } from "@/lib/auth/form-state";
@@ -132,7 +131,8 @@ export async function deleteAccount(confirmation: string): Promise<AccountResult
   const { error } = await supabase.rpc("delete_my_account");
   if (error) return { ok: false, message: "Não foi possível excluir a conta. Tente novamente." };
   await supabase.auth.signOut();
-  redirect("/login?conta=excluida");
+  // The browser navigates to /login?conta=excluida (after removing the Firebase login, if any).
+  return { ok: true };
 }
 
 const bodyProfileSchema = z.object({

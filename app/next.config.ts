@@ -13,7 +13,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: https://${supabase}`,
   `media-src 'self' blob: https://${supabase}`,
-  `connect-src 'self' https://${supabase} wss://${supabase} https://*.ingest.sentry.io https://*.ingest.us.sentry.io`,
+  `connect-src 'self' https://${supabase} wss://${supabase} https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com`,
   "frame-src https://www.youtube-nocookie.com https://player.vimeo.com",
   "worker-src 'self'",
   "manifest-src 'self'",

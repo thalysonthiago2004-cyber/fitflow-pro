@@ -5,9 +5,11 @@ import { FormField } from "@/components/forms/form-field";
 import { FormMessage } from "@/components/forms/form-message";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { initialFormState } from "@/lib/auth/schemas";
+import { firebaseEnabled } from "@/lib/firebase/config";
+import { FirebaseForgotPasswordForm } from "./firebase-forgot-password-form";
 import { requestPasswordReset } from "../actions";
 
-export function ForgotPasswordForm() {
+function SupabaseForgotPasswordForm() {
   const [state, action, pending] = useActionState(requestPasswordReset, initialFormState);
 
   if (state.status === "success") return <FormMessage state={state} />;
@@ -30,4 +32,8 @@ export function ForgotPasswordForm() {
       </SubmitButton>
     </form>
   );
+}
+
+export function ForgotPasswordForm() {
+  return firebaseEnabled ? <FirebaseForgotPasswordForm /> : <SupabaseForgotPasswordForm />;
 }

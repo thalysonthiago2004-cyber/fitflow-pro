@@ -5,10 +5,12 @@ import { FormField } from "@/components/forms/form-field";
 import { FormMessage } from "@/components/forms/form-message";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { initialFormState } from "@/lib/auth/schemas";
+import { firebaseEnabled } from "@/lib/firebase/config";
+import { FirebaseLoginForm } from "./firebase-login-form";
 import { login } from "../actions";
 import { TextLink } from "../text-link";
 
-export function LoginForm() {
+function SupabaseLoginForm() {
   const [state, action, pending] = useActionState(login, initialFormState);
 
   // Read ?next= at submit time instead of during render, so the form stays in
@@ -49,4 +51,8 @@ export function LoginForm() {
       </SubmitButton>
     </form>
   );
+}
+
+export function LoginForm() {
+  return firebaseEnabled ? <FirebaseLoginForm /> : <SupabaseLoginForm />;
 }

@@ -85,3 +85,20 @@ describe("account deletion", () => {
     await expect(t.asUser(null, () => t.db.query("select public.delete_my_account()"))).rejects.toThrow(/permission denied/);
   });
 });
+
+describe("firebase identity link", () => {
+  it("only the server can set or read-by-email the link", async () => {
+    await t.createAuthUser(uid("f1"), "fiona@example.com", { full_name: "Fiona", beta_code: "FITFLOW2026" });
+    await expect(
+      t.asUser(uid("f1"), () => t.db.query("update public.profiles set firebase_uid = 'abc123' where id = $1", [uid("f1")])),
+    ).rejects.toThrow(/permission denied/);
+    await expect(t.asUser(uid("f1"), () => t.db.query("select * from public.find_auth_user_by_email('fiona@example.com')"))).rejects.toThrow(/permission denied/);
+    await t.db.exec("set role service_role");
+    try {
+      const { rows } = await t.db.query<{ user_id: string }>("select * from public.find_auth_user_by_email('FIONA@example.com')");
+      expect(rows[0].user_id).toBe(uid("f1"));
+    } finally {
+      await t.db.exec("reset role");
+    }
+  });
+});

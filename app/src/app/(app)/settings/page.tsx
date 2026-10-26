@@ -79,7 +79,7 @@ async function SettingsContent() {
             <Link href="/privacidade" className={buttonVariants({ variant: "ghost" })}>Política de privacidade</Link>
             <Link href="/termos" className={buttonVariants({ variant: "ghost" })}>Termos de uso</Link>
           </div>
-          <DeleteAccount ownsWorkspace={user.workspace?.role === "owner"} />
+          <DeleteAccount email={user.email} ownsWorkspace={user.workspace?.role === "owner"} />
         </div>
       </SettingsCard>
     </div>

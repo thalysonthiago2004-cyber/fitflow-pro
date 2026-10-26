@@ -6,10 +6,12 @@ import { FormMessage } from "@/components/forms/form-message";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { buttonVariants } from "@/components/ui/button";
 import { initialFormState } from "@/lib/auth/schemas";
+import { firebaseEnabled } from "@/lib/firebase/config";
+import { FirebaseChangePasswordForm } from "./firebase-change-password-form";
 import Link from "next/link";
 import { updatePassword } from "../actions";
 
-export function ResetPasswordForm() {
+function SupabaseResetPasswordForm() {
   const [state, action, pending] = useActionState(updatePassword, initialFormState);
 
   if (state.status === "success") {
@@ -48,4 +50,8 @@ export function ResetPasswordForm() {
       </SubmitButton>
     </form>
   );
+}
+
+export function ResetPasswordForm({ email }: { email: string }) {
+  return firebaseEnabled ? <FirebaseChangePasswordForm email={email} /> : <SupabaseResetPasswordForm />;
 }

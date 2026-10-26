@@ -7,9 +7,11 @@ import { FormField } from "@/components/forms/form-field";
 import { FormMessage } from "@/components/forms/form-message";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { initialFormState } from "@/lib/auth/schemas";
+import { firebaseEnabled } from "@/lib/firebase/config";
+import { FirebaseSignupForm } from "./firebase-signup-form";
 import { signup } from "../actions";
 
-export function SignupForm({ betaClosed }: { betaClosed: boolean }) {
+function SupabaseSignupForm({ betaClosed }: { betaClosed: boolean }) {
   const [state, action, pending] = useActionState(signup, initialFormState);
 
   if (state.status === "success") return <FormMessage state={state} />;
@@ -65,4 +67,8 @@ export function SignupForm({ betaClosed }: { betaClosed: boolean }) {
       </SubmitButton>
     </form>
   );
+}
+
+export function SignupForm(props: { betaClosed: boolean }) {
+  return firebaseEnabled ? <FirebaseSignupForm {...props} /> : <SupabaseSignupForm {...props} />;
 }

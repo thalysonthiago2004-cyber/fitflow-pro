@@ -26,6 +26,8 @@ export const loginSchema = z.object({
   password: z.string({ error: "Informe sua senha." }).min(1, "Informe sua senha."),
 });
 
+export const fullNameSchema = fullName;
+export const newPasswordSchema = newPassword;
 export const signupSchema = z.object({ fullName, email, password: newPassword });
 
 export const forgotPasswordSchema = z.object({ email });
