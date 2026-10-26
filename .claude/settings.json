@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm run typecheck)",
+      "Bash(npm run lint)",
+      "Bash(npm test)",
+      "Bash(npx vitest run *)",
+      "Bash(git check-ignore *)",
+      "Bash(git push:*)"
+    ]
+  }
+}

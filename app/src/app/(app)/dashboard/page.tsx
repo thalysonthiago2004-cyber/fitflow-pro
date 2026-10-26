@@ -20,6 +20,8 @@ import { getCompletedWorkoutDates, getWorkspaceWeekActivity } from "@/lib/progre
 import { UserAvatar } from "@/components/user-avatar";
 import { avatarUrl } from "@/lib/images/urls";
 import { whatsappLink } from "@/lib/phone";
+import { type OnboardingStep, OnboardingChecklist } from "@/components/onboarding-checklist";
+import { createClient } from "@/lib/supabase/server";
 import { getLatestQuestionnaire } from "@/lib/students/questionnaire-queries";
 import { buildAttention, getAttentionData } from "@/lib/students/attention-queries";
 import { getTrainer, listPendingInvitations, listStudents } from "@/lib/students/queries";
@@ -67,14 +69,25 @@ function SectionTitle({ id, title, href, linkLabel }: { id: string; title: strin
 
 async function TrainerHome({ user }: { user: CurrentUser }) {
   const workspace = user.workspace!;
-  const [students, invitations, plans, recentLogs, week, attentionData] = await Promise.all([
+  const supabase = await createClient();
+  const [students, invitations, plans, recentLogs, week, attentionData, templates, devices] = await Promise.all([
     listStudents(workspace.id),
     listPendingInvitations(workspace.id),
     listPlans({ workspaceId: workspace.id, statuses: ["active"] }),
     listLogs({ workspaceId: workspace.id, completedOnly: true, limit: 6 }),
     getWorkspaceWeekActivity(workspace.id),
     getAttentionData(workspace.id),
+    listPlans({ workspaceId: workspace.id, templates: true }),
+    supabase.from("push_subscriptions").select("id", { count: "exact", head: true }).eq("user_id", user.id),
   ]);
+  const onboarding: OnboardingStep[] = [
+    { done: user.avatarPath !== null, label: "Adicione sua foto", hint: "Seus alunos veem quem é o personal deles.", href: "/settings" },
+    { done: user.whatsapp !== null, label: "Cadastre seu WhatsApp", hint: "Os alunos falam com você em um toque.", href: "/settings" },
+    { done: templates.length > 0, label: "Monte ou adicione modelos de treino", hint: "Comece pelos modelos prontos e adapte.", href: "/workouts?status=templates" },
+    { done: students.length > 0 || invitations.length > 0, label: "Convide seu primeiro aluno", hint: "Ele recebe um link e entra já vinculado a você.", href: "/students/invite" },
+    { done: plans.length > 0, label: "Publique um plano de treino", hint: "Crie a partir de um modelo e publique para o aluno.", href: "/workouts" },
+    { done: (devices.count ?? 0) > 0, label: "Ative as notificações", hint: "Saiba quando um aluno concluir um treino.", href: "/settings" },
+  ];
   const active = students.filter((s) => s.status === "active").length;
   const attention = buildAttention(attentionData, students, plans);
 
@@ -82,6 +95,7 @@ async function TrainerHome({ user }: { user: CurrentUser }) {
     return (
       <div className="grid gap-8">
         <Greeting name={user.fullName} subtitle="Vamos montar seu espaço de trabalho." />
+        <OnboardingChecklist steps={onboarding} />
         <EmptyState
           icon={Users}
           title="Nenhum aluno ainda"
@@ -111,6 +125,8 @@ async function TrainerHome({ user }: { user: CurrentUser }) {
           </Link>
         }
       />
+
+      <OnboardingChecklist steps={onboarding} />
 
       <section aria-labelledby="week-title" className="grid gap-6 rounded-3xl border bg-card bg-brand-glow p-5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:p-6">
         <h2 id="week-title" className="sr-only">Atividade da semana</h2>

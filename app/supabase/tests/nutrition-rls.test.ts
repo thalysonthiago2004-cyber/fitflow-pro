@@ -183,3 +183,23 @@ describe("meal plans", () => {
     await expect(t.db.query("delete from public.foods where id = $1", [egg])).rejects.toThrow(/foreign key/);
   });
 });
+
+describe("meal plan duplication", () => {
+  it("staff copy a plan with its meals and items for another student; others cannot", async () => {
+    const { rows: plans } = await t.asUser(TRAINER_A, () => t.db.query<{ id: string }>("select id from public.meal_plans order by created_at limit 1"));
+    expect(plans.length).toBeGreaterThan(0);
+    const { rows } = await t.asUser(TRAINER_A, () => t.db.query<{ id: string }>("select public.duplicate_meal_plan($1, $2, 'Cópia') as id", [plans[0].id, STUDENT_2]));
+    const copy = rows[0].id;
+    const counts = async (id: string) =>
+      (await t.asUser(TRAINER_A, () => t.db.query<{ meals: string; items: string }>(
+        "select (select count(*) from public.meals where plan_id = $1) as meals, (select count(*) from public.meal_items mi join public.meals m on m.id = mi.meal_id where m.plan_id = $1) as items",
+        [id],
+      ))).rows[0];
+    const original = await counts(plans[0].id);
+    expect(Number(original.items)).toBeGreaterThan(0);
+    expect(await counts(copy)).toEqual(original);
+    const status = await t.asUser(TRAINER_A, () => t.db.query<{ status: string; student_id: string }>("select status, student_id from public.meal_plans where id = $1", [copy]));
+    expect(status.rows[0]).toEqual({ status: "draft", student_id: STUDENT_2 });
+    await expect(t.asUser(TRAINER_B, () => t.db.query("select public.duplicate_meal_plan($1, $2, 'x')", [plans[0].id, STUDENT_2]))).rejects.toThrow(/plan_not_found/);
+  });
+});

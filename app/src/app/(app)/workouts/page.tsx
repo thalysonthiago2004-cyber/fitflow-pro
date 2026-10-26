@@ -11,6 +11,8 @@ import { formatDate } from "@/lib/format";
 import type { PlanStatus } from "@/lib/supabase/database.types";
 import { PLAN_STATUS_LABELS, PLAN_STATUS_TONES } from "@/lib/workouts/labels";
 import { listPlans } from "@/lib/workouts/queries";
+import { STARTER_TEMPLATES } from "@/lib/workouts/starter-templates";
+import { StarterTemplatesButton } from "./starter-templates-button";
 
 export const metadata: Metadata = { title: "Planos de treino" };
 
@@ -55,15 +57,27 @@ async function PlansContent({ searchParams }: Pick<PageProps<"/workouts">, "sear
           title={view === "active" ? "Nenhum plano ativo" : view === "draft" ? "Nenhum rascunho" : view === "templates" ? "Nenhum modelo ainda" : "Nenhum plano arquivado"}
           description={
             view === "templates"
-              ? "Abra um plano pronto e use \"Duplicar → Salvar como modelo\". Depois é só criar planos de alunos a partir dele."
+              ? "Comece pelos modelos prontos (iniciante, ABC e condicionamento) ou salve um plano seu com \"Duplicar → Salvar como modelo\"."
               : view === "active"
                 ? "Crie um plano e publique para o aluno começar a treinar."
                 : "Os planos aparecem aqui conforme o status."
           }
-          action={view === "active" || view === "draft" ? <Link href="/workouts/new" className={buttonVariants()}><Plus aria-hidden />Novo plano</Link> : undefined}
+          action={
+            view === "templates" ? (
+              <StarterTemplatesButton />
+            ) : view === "active" || view === "draft" ? (
+              <Link href="/workouts/new" className={buttonVariants()}><Plus aria-hidden />Novo plano</Link>
+            ) : undefined
+          }
         />
       ) : (
         <ul className="grid gap-2">
+          {view === "templates" && !STARTER_TEMPLATES.every((t) => templates.some((p) => p.name === t.name)) && (
+            <li className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed p-4">
+              <p className="min-w-0 flex-1 text-sm text-muted-foreground">Quer um ponto de partida? Adicione os modelos prontos e ajuste ao seu estilo.</p>
+              <StarterTemplatesButton variant="outline" />
+            </li>
+          )}
           {visible.map((plan) => (
             <li key={plan.id}>
               <Link

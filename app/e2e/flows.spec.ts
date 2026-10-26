@@ -689,6 +689,25 @@ test("@supabase signed-in screens pass automated accessibility checks", async ({
   await studentPage.context().close();
 });
 
+test("@supabase starter templates and the getting-started checklist", async ({ page }) => {
+  await login(page, trainer.email, trainer.password);
+  const checklist = page.getByRole("region", { name: "Primeiros passos" });
+  await expect(checklist).toBeVisible();
+  await expect(checklist.getByText("Convide seu primeiro aluno")).toBeVisible();
+
+  await page.goto("/workouts?status=templates");
+  await page.getByRole("button", { name: "Adicionar modelos prontos" }).first().click();
+  await expect(page.getByText("3 modelos adicionados. Ajuste ao seu estilo antes de usar.").filter({ visible: true })).toBeVisible({ timeout: 15_000 });
+  for (const name of ["Modelo inicial — Iniciante full body 3x", "Modelo inicial — Hipertrofia ABC", "Modelo inicial — Condicionamento e cardio"]) {
+    await expect(page.getByRole("link", { name: new RegExp(name) })).toBeVisible();
+  }
+  // The ABC template keeps its tricep bi-set; adding again does not duplicate.
+  await page.getByRole("link", { name: /Modelo inicial — Hipertrofia ABC/ }).click();
+  await expect(page.getByText("Bi-set", { exact: true }).filter({ visible: true })).toHaveCount(2);
+  await page.goto("/workouts?status=templates");
+  await expect(page.getByRole("button", { name: "Adicionar modelos prontos" })).toHaveCount(0);
+});
+
 test("@supabase students reach their trainer on WhatsApp", async ({ browser, page }) => {
   await login(page, trainer.email, trainer.password);
   await page.goto("/settings");

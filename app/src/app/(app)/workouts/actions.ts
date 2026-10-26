@@ -13,6 +13,7 @@ import type { PlanStatus } from "@/lib/supabase/database.types";
 import { RATE_LIMITED, allow } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import { cardioSchema, newPlanSchema, planSchema, prescriptionSchema, sessionSchema } from "@/lib/workouts/schemas";
+import { STARTER_TEMPLATES, starterExerciseNames } from "@/lib/workouts/starter-templates";
 
 export type ActionResult = { ok: true } | { ok: false; message: string };
 
@@ -503,4 +504,63 @@ export async function duplicatePlan(planId: string, _prev: FormState, formData: 
   });
   if (error || !data) return { status: "error", message: GENERIC_DB_ERROR, values };
   redirect(`/workouts/${data}`);
+}
+
+/**
+ * Adds the starter templates the workspace does not have yet. Everything is
+ * written with the trainer's session (RLS applies) and exercises come from the
+ * global catalog by name.
+ */
+export async function addStarterTemplates(): Promise<ActionResult & { added?: number }> {
+  const user = await requireStaff();
+  const supabase = await createClient();
+  if (!(await allow(supabase, "duplicate_plan"))) return { ok: false, message: RATE_LIMITED };
+
+  const [{ data: existing }, { data: catalog }] = await Promise.all([
+    supabase.from("workout_plans").select("name").eq("workspace_id", user.workspace.id).eq("is_template", true),
+    supabase.from("exercises").select("id, name").is("workspace_id", null).in("name", starterExerciseNames()),
+  ]);
+  const have = new Set((existing ?? []).map((p) => p.name));
+  const exerciseId = new Map((catalog ?? []).map((e) => [e.name, e.id]));
+  const missing = STARTER_TEMPLATES.filter((t) => !have.has(t.name));
+  if (missing.some((t) => t.sessions.some((s) => s.items.some((i) => !exerciseId.has(i.exercise))))) return { ok: false, message: GENERIC_DB_ERROR };
+
+  for (const template of missing) {
+    const { data: plan, error } = await supabase
+      .from("workout_plans")
+      .insert({ workspace_id: user.workspace.id, student_id: null, is_template: true, status: "draft", name: template.name, notes: template.notes, created_by: user.id })
+      .select("id")
+      .single();
+    if (error || !plan) return { ok: false, message: GENERIC_DB_ERROR };
+    for (const [sessionIndex, session] of template.sessions.entries()) {
+      const { data: row, error: sessionError } = await supabase
+        .from("workout_sessions")
+        .insert({ workspace_id: user.workspace.id, plan_id: plan.id, name: session.name, weekdays: session.weekdays, position: sessionIndex })
+        .select("id")
+        .single();
+      if (sessionError || !row) return { ok: false, message: GENERIC_DB_ERROR };
+      const groups = new Map<string, string>();
+      const items = session.items.map((item, position) => {
+        const base = { workspace_id: user.workspace.id, session_id: row.id, exercise_id: exerciseId.get(item.exercise)!, position };
+        if ("cardio" in item) {
+          return item.cardio === "continuous"
+            ? { ...base, cardio_mode: "continuous" as const, duration_minutes: item.minutes, intensity: item.intensity }
+            : { ...base, cardio_mode: "intervals" as const, rounds: item.rounds, work_seconds: item.work, rest_seconds: item.rest, intensity: item.intensity };
+        }
+        if (item.group && !groups.has(item.group)) groups.set(item.group, randomUUID());
+        return {
+          ...base,
+          sets: item.sets,
+          reps_min: item.reps[0],
+          reps_max: item.reps[1] !== null && item.reps[1] !== item.reps[0] ? item.reps[1] : null,
+          rest_seconds: item.rest,
+          superset_group: item.group ? groups.get(item.group)! : null,
+        };
+      });
+      const { error: itemsError } = await supabase.from("session_exercises").insert(items);
+      if (itemsError) return { ok: false, message: GENERIC_DB_ERROR };
+    }
+  }
+  refresh();
+  return { ok: true, added: missing.length };
 }
