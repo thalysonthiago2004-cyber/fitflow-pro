@@ -10,6 +10,7 @@ export type CurrentUser = {
   email: string;
   fullName: string;
   avatarPath: string | null;
+  whatsapp: string | null;
   role: UserRole;
   workspace: { id: string; name: string; role: WorkspaceRole } | null;
 };
@@ -23,7 +24,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   if (claimsError || !claims?.sub) return null;
 
   const [{ data: profile, error: profileError }, { data: membership }] = await Promise.all([
-    supabase.from("profiles").select("full_name, role, avatar_path").eq("id", claims.sub).maybeSingle(),
+    supabase.from("profiles").select("full_name, role, avatar_path, whatsapp").eq("id", claims.sub).maybeSingle(),
     supabase
       .from("workspace_members")
       .select("role, workspaces(id, name)")
@@ -47,6 +48,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     email: typeof claims.email === "string" ? claims.email : "",
     fullName: profile.full_name,
     avatarPath: profile.avatar_path,
+    whatsapp: profile.whatsapp,
     role: profile.role,
     workspace,
   };

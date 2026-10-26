@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth/dal";
 import { pushConfigured, sendPush } from "@/lib/push/server";
+import { RATE_LIMITED, allow } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 type Result = { ok: true } | { ok: false; message: string };
@@ -43,6 +44,7 @@ export async function sendTestPush(): Promise<Result> {
   const user = await requireUser();
   if (!pushConfigured()) return { ok: false, message: "As notificações ainda não estão configuradas no servidor." };
   const supabase = await createClient();
+  if (!(await allow(supabase, "push_test"))) return { ok: false, message: RATE_LIMITED };
   const { data } = await supabase.from("push_subscriptions").select("endpoint, p256dh, auth").eq("user_id", user.id);
   if (!data?.length) return { ok: false, message: "Ative as notificações neste aparelho primeiro." };
   const results = await Promise.all(data.map((s) => sendPush(s, { title: "FitFlow Pro", body: "Notificações ativadas. Você vai receber seus lembretes por aqui.", tag: "test" })));

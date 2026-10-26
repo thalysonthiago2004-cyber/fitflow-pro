@@ -8,6 +8,7 @@ import type { FormState } from "@/lib/auth/schemas";
 import { PARQ_DETAILS, PARQ_QUESTIONS, parqSchema } from "@/lib/students/parq";
 import { GENERIC_DB_ERROR } from "@/lib/students/errors";
 import { notifyActivity } from "@/lib/push/notify";
+import { RATE_LIMITED, allow } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 // Each submission is kept, so the trainer sees when answers changed.
@@ -19,6 +20,7 @@ export async function submitQuestionnaire(_prev: FormState, formData: FormData):
   if (!parsed.success) return validationError(parsed.error, values);
 
   const supabase = await createClient();
+  if (!(await allow(supabase, "questionnaire"))) return { status: "error", message: RATE_LIMITED, values };
   const { error } = await supabase.from("health_questionnaires").insert({
     workspace_id: user.workspace.id,
     student_id: user.id,

@@ -68,7 +68,7 @@ export default function AssessmentsPage() {
         title="Avaliação corporal"
         description="Estimativas rápidas pelas medidas (IMC, % de gordura, massa magra, TMB) e registro dos valores da balança de bioimpedância de cada aluno."
       />
-      <Suspense fallback={<div className="h-64 animate-pulse rounded-xl bg-muted" aria-label="Carregando alunos" />}>
+      <Suspense fallback={<div role="status" className="h-64 animate-pulse rounded-xl bg-muted" aria-label="Carregando alunos" />}>
         <Content />
       </Suspense>
     </div>

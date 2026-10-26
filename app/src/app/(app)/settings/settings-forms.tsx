@@ -12,10 +12,11 @@ import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/user-avatar";
 import { initialFormState } from "@/lib/auth/schemas";
 import { formatNumber, todayISO } from "@/lib/format";
+import { formatWhatsapp } from "@/lib/phone";
 import { UnsupportedImageError, prepareImage } from "@/lib/images/prepare";
 import { deleteAccount, removeAvatar, updateMyBodyProfile, updateProfile, updateWorkspace, uploadAvatar } from "./actions";
 
-export function ProfileForm({ fullName, email }: { fullName: string; email: string }) {
+export function ProfileForm({ fullName, email, whatsapp }: { fullName: string; email: string; whatsapp: string | null | undefined }) {
   const [state, action, pending] = useActionState(updateProfile, initialFormState);
 
   return (
@@ -38,6 +39,19 @@ export function ProfileForm({ fullName, email }: { fullName: string; email: stri
         disabled
         hint="A alteração de e-mail ainda não está disponível."
       />
+      {whatsapp !== undefined && (
+        <FormField
+          name="whatsapp"
+          label="WhatsApp (opcional)"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder="(11) 98765-4321"
+          hint="Seus alunos veem um botão para falar com você pelo WhatsApp."
+          defaultValue={state.values?.whatsapp ?? (whatsapp ? formatWhatsapp(whatsapp) : "")}
+          errors={state.fieldErrors?.whatsapp}
+        />
+      )}
       <SubmitButton pending={pending} pendingLabel="Salvando…" className="justify-self-start">
         Salvar perfil
       </SubmitButton>

@@ -42,7 +42,7 @@ export default function AnamnesePage({ searchParams }: PageProps<"/anamnese">) {
   return (
     <div className="grid max-w-3xl gap-8">
       <PageHeader title="Anamnese" description="Algumas perguntas de saúde para seu personal montar treinos seguros. Leva 2 minutos." />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando anamnese" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando anamnese" />}>
         <Content searchParams={searchParams} />
       </Suspense>
     </div>

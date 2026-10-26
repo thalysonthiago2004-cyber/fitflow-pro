@@ -10,6 +10,7 @@ import { getPublicEnv } from "@/lib/env";
 import { dbErrorMessage } from "@/lib/students/errors";
 import { goalSchema } from "@/lib/hydration/schemas";
 import { inviteStudentSchema, studentProfileSchema } from "@/lib/students/schemas";
+import { RATE_LIMITED, allow } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 export type InviteState = FormState & { inviteUrl?: string; expiresAt?: string };
@@ -28,6 +29,7 @@ export async function inviteStudent(_prev: InviteState, formData: FormData): Pro
   if (!parsed.success) return validationError(parsed.error, values);
 
   const supabase = await createClient();
+  if (!(await allow(supabase, "invite"))) return { status: "error", message: RATE_LIMITED, values };
   const { data, error } = await supabase.rpc("create_student_invitation", {
     p_workspace_id: user.workspace.id,
     p_email: parsed.data.email,

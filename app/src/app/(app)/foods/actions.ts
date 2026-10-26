@@ -9,6 +9,7 @@ import type { FormState } from "@/lib/auth/schemas";
 import { foodSchema } from "@/lib/nutrition/schemas";
 import { GENERIC_DB_ERROR } from "@/lib/students/errors";
 import { TACO_FOODS, tacoSource } from "@/lib/nutrition/taco";
+import { RATE_LIMITED, allow } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 const DUPLICATE = "Já existe um alimento com este nome.";
@@ -98,6 +99,7 @@ export async function importTacoFoods(items: number[]): Promise<ImportResult> {
   if (foods.length === 0) return { ok: false, message: "Selecione pelo menos um alimento." };
 
   const supabase = await createClient();
+  if (!(await allow(supabase, "taco_import"))) return { ok: false, message: RATE_LIMITED };
   const { data: existing, error: readError } = await supabase.from("foods").select("name").eq("workspace_id", user.workspace.id).eq("archived", false);
   if (readError) return { ok: false, message: GENERIC_DB_ERROR };
   const taken = new Set(existing.map((f) => f.name.toLowerCase()));

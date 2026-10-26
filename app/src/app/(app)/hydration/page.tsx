@@ -93,7 +93,7 @@ export default function HydrationPage() {
   return (
     <div className="grid max-w-3xl gap-8">
       <PageHeader title="Hidratação" description="Registre a água que você bebe ao longo do dia." />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando hidratação" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando hidratação" />}>
         <HydrationContent />
       </Suspense>
     </div>

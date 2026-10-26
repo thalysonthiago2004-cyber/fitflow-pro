@@ -12,6 +12,7 @@ import { requireStaff } from "@/lib/auth/dal";
 import { formatDate } from "@/lib/format";
 import { listPendingInvitations, listStudents } from "@/lib/students/queries";
 import { STUDENT_STATUS_LABELS } from "@/lib/students/schemas";
+import { normalize } from "@/lib/text";
 import { cn } from "@/lib/utils";
 import { InvitationActions } from "./invitation-actions";
 
@@ -23,10 +24,6 @@ const VIEWS: { key: View; label: string }[] = [
   { key: "archived", label: "Arquivados" },
   { key: "invites", label: "Convites pendentes" },
 ];
-
-function normalize(text: string) {
-  return text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
-}
 
 async function StudentsContent({ searchParams }: Pick<PageProps<"/students">, "searchParams">) {
   const params = await searchParams;
@@ -179,7 +176,7 @@ async function StudentsContent({ searchParams }: Pick<PageProps<"/students">, "s
 
 function StudentsSkeleton() {
   return (
-    <div className="grid gap-6" aria-busy="true" aria-label="Carregando alunos">
+    <div role="status" className="grid gap-6" aria-busy="true" aria-label="Carregando alunos">
       <div className="h-12 w-80 max-w-full animate-pulse rounded-xl bg-muted" />
       <div className="h-11 max-w-md animate-pulse rounded-lg bg-muted" />
       <div className="h-64 animate-pulse rounded-xl bg-muted" />

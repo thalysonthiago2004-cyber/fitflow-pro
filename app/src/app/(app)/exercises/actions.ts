@@ -7,6 +7,7 @@ import { requireStaff } from "@/lib/auth/dal";
 import { formString, validationError } from "@/lib/auth/form-state";
 import type { FormState } from "@/lib/auth/schemas";
 import { GENERIC_DB_ERROR } from "@/lib/students/errors";
+import { RATE_LIMITED, allow } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import { exerciseSchema } from "@/lib/workouts/schemas";
 
@@ -159,6 +160,7 @@ export async function requestVideoUpload(exerciseId: string, contentType: string
   if (!ext) return { ok: false, message: "Formato não suportado. Envie um vídeo MP4, MOV ou WebM." };
   if (!Number.isFinite(size) || size <= 0 || size > VIDEO_MAX_BYTES) return { ok: false, message: "O vídeo pode ter no máximo 50 MB. Grave um trecho mais curto." };
 
+  if (!(await allow(ctx.supabase, "exercise_video"))) return { ok: false, message: RATE_LIMITED };
   await removeOrphanVideos(ctx);
   const path = `${ctx.user.workspace.id}/${crypto.randomUUID()}.${ext}`;
   const { data, error } = await ctx.supabase.storage.from("exercise-videos").createSignedUploadUrl(path);

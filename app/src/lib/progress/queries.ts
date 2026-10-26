@@ -1,5 +1,6 @@
 import "server-only";
 
+import { fail } from "@/lib/query-utils";
 import { addDays, todayISO } from "@/lib/format";
 import type { MeasurementSource, Sex } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
@@ -12,9 +13,6 @@ export type Measurement = { id: string; measuredOn: string; source: MeasurementS
   number | null
 >;
 
-function fail(what: string, error: { message: string }): never {
-  throw new Error(`Failed to load ${what}: ${error.message}`);
-}
 
 /** Newest first. RLS limits rows to the student and their staff. */
 export async function listMeasurements(studentId: string): Promise<Measurement[]> {

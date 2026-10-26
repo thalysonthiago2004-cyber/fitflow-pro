@@ -42,7 +42,7 @@ async function SettingsContent() {
       <SettingsCard title="Perfil" description="Como você aparece para alunos e colegas.">
         <div className="grid gap-6">
           <AvatarForm fullName={user.fullName} avatarUrl={avatarUrl(user.avatarPath)} staff={isStaffRole(user.workspace?.role)} />
-          <ProfileForm fullName={user.fullName} email={user.email} />
+          <ProfileForm fullName={user.fullName} email={user.email} whatsapp={user.role === "trainer" ? user.whatsapp : undefined} />
         </div>
       </SettingsCard>
 
@@ -90,7 +90,7 @@ export default function SettingsPage() {
   return (
     <div className="grid gap-8">
       <PageHeader title="Configurações" description="Atualize seu perfil e as preferências da conta." />
-      <Suspense fallback={<div className="h-96 max-w-2xl animate-pulse rounded-xl bg-muted" aria-label="Carregando" />}>
+      <Suspense fallback={<div role="status" className="h-96 max-w-2xl animate-pulse rounded-xl bg-muted" aria-label="Carregando" />}>
         <SettingsContent />
       </Suspense>
     </div>

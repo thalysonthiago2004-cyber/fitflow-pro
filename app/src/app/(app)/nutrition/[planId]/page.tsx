@@ -87,7 +87,7 @@ export default function MealPlanPage({ params }: PageProps<"/nutrition/[planId]"
         <ArrowLeft className="size-4" aria-hidden />
         Planos alimentares
       </Link>
-      <Suspense fallback={<div className="h-[32rem] animate-pulse rounded-xl bg-muted" aria-label="Carregando plano" />}>
+      <Suspense fallback={<div role="status" className="h-[32rem] animate-pulse rounded-xl bg-muted" aria-label="Carregando plano" />}>
         <Builder params={params} />
       </Suspense>
     </div>

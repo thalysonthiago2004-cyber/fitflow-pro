@@ -65,7 +65,7 @@ export default function MealsPage() {
   return (
     <div className="grid max-w-3xl gap-8">
       <PageHeader title="Minha dieta" description="Refeições, quantidades e estimativas do seu plano alimentar." />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando plano alimentar" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando plano alimentar" />}>
         <MealsContent />
       </Suspense>
     </div>

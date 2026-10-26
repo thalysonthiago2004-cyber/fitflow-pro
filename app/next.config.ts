@@ -37,7 +37,13 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    // Icons and login photos change rarely and have stable names: cache for a week.
+    const staticCache = [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      { source: "/icons/:path*", headers: staticCache },
+      { source: "/auth/:file(.*\\.(?:jpg|png|webp))", headers: staticCache },
+    ];
   },
   experimental: {
     // Photos are resized in the browser (≤ 3.5 MB); Vercel caps requests at 4.5 MB.

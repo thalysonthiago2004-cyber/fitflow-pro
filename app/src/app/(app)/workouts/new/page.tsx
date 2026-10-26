@@ -48,7 +48,7 @@ export default function NewPlanPage({ searchParams }: PageProps<"/workouts/new">
         Planos de treino
       </Link>
       <PageHeader title="Novo plano de treino" description="Escolha o aluno e dê um nome ao plano. Depois você monta os treinos." />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando" />}>
         <NewPlanContent searchParams={searchParams} />
       </Suspense>
     </div>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { ChevronRight, CircleAlert, ClipboardList, HeartPulse, Droplets, Dumbbell, Flame, MailPlus, Plus, UserPlus, Users } from "lucide-react";
+import { ChevronRight, CircleAlert, ClipboardList, HeartPulse, MessageCircle, Droplets, Dumbbell, Flame, MailPlus, Plus, UserPlus, Users } from "lucide-react";
 import { IconTile } from "@/components/brand-ui/icon-tile";
 import { MetricRow } from "@/components/brand-ui/metric-row";
 import { ProgressRing } from "@/components/brand-ui/progress-ring";
@@ -19,6 +19,7 @@ import { weeklyStreak } from "@/lib/progress/calc";
 import { getCompletedWorkoutDates, getWorkspaceWeekActivity } from "@/lib/progress/queries";
 import { UserAvatar } from "@/components/user-avatar";
 import { avatarUrl } from "@/lib/images/urls";
+import { whatsappLink } from "@/lib/phone";
 import { getLatestQuestionnaire } from "@/lib/students/questionnaire-queries";
 import { buildAttention, getAttentionData } from "@/lib/students/attention-queries";
 import { getTrainer, listPendingInvitations, listStudents } from "@/lib/students/queries";
@@ -247,7 +248,7 @@ async function StudentHome({ user }: { user: CurrentUser }) {
         subtitle={openLog ? "Seu treino está em andamento." : todays.length ? "Pronto para o treino de hoje?" : "Dia de descanso no seu plano."}
         aside={
           streak > 0 ? (
-            <div className="flex shrink-0 items-center gap-2 rounded-2xl border bg-card px-3 py-2" aria-label={`${streak} ${streak === 1 ? "semana" : "semanas"} seguidas com treino`}>
+            <div role="img" className="flex shrink-0 items-center gap-2 rounded-2xl border bg-card px-3 py-2" aria-label={`${streak} ${streak === 1 ? "semana" : "semanas"} seguidas com treino`}>
               <Flame className="size-5 dark:text-brand" aria-hidden />
               <span className="grid leading-tight" aria-hidden>
                 <span className="text-lg font-extrabold tabular-nums">{streak}</span>
@@ -265,6 +266,18 @@ async function StudentHome({ user }: { user: CurrentUser }) {
           <span className="truncate font-heading text-lg font-bold">{trainer?.fullName ?? "Seu personal"}</span>
           <span className="truncate text-sm text-muted-foreground">{user.workspace.name}</span>
         </div>
+        {trainer?.whatsapp && (
+          <a
+            href={whatsappLink(trainer.whatsapp, `Olá, ${trainer.fullName.split(/\s+/)[0]}! Aqui é ${user.fullName.split(/\s+/)[0]}, do FitFlow Pro.`)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonVariants({ variant: "outline", className: "ml-auto shrink-0" })}
+          >
+            <MessageCircle aria-hidden />
+            <span className="hidden sm:inline">Falar no WhatsApp</span>
+            <span className="sr-only sm:hidden">Falar com {trainer.fullName} no WhatsApp (abre em nova aba)</span>
+          </a>
+        )}
       </section>
 
       {!questionnaire && (
@@ -340,7 +353,7 @@ async function DashboardContent() {
 
 function DashboardSkeleton() {
   return (
-    <div className="grid gap-8" aria-busy="true" aria-label="Carregando painel">
+    <div role="status" className="grid gap-8" aria-busy="true" aria-label="Carregando painel">
       <div className="h-12 w-56 animate-pulse rounded-xl bg-muted" />
       <div className="h-64 animate-pulse rounded-3xl bg-muted" />
       <div className="h-48 animate-pulse rounded-3xl bg-muted" />

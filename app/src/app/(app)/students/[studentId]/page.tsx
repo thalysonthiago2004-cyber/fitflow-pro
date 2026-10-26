@@ -234,7 +234,7 @@ export default function StudentPage({ params }: PageProps<"/students/[studentId]
         <ArrowLeft className="size-4" aria-hidden />
         Alunos
       </Link>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando aluno" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando aluno" />}>
         <StudentContent params={params} />
       </Suspense>
     </div>

@@ -98,7 +98,7 @@ export default function TrainingSessionPage({ params }: PageProps<"/training/ses
         <ArrowLeft className="size-4" aria-hidden />
         Meus treinos
       </Link>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando treino" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando treino" />}>
         <SessionContent params={params} />
       </Suspense>
     </div>

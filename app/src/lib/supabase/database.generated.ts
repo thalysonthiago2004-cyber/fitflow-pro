@@ -742,6 +742,7 @@ export type Database = {
           id: string
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
+          whatsapp: string | null
         }
         Insert: {
           avatar_path?: string | null
@@ -750,6 +751,7 @@ export type Database = {
           id: string
           role: Database["public"]["Enums"]["user_role"]
           updated_at?: string
+          whatsapp?: string | null
         }
         Update: {
           avatar_path?: string | null
@@ -758,6 +760,7 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: []
       }
@@ -1366,6 +1369,10 @@ export type Database = {
     }
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string }
+      check_rate_limit: {
+        Args: { p_action: string; p_max: number; p_window_seconds: number }
+        Returns: boolean
+      }
       claim_due_reminders: {
         Args: { p_now?: string }
         Returns: {

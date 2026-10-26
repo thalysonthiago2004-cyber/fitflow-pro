@@ -41,7 +41,7 @@ export default function StudentLogPage({ params }: PageProps<"/students/[student
         <ArrowLeft className="size-4" aria-hidden />
         Alunos
       </Link>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando treino" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando treino" />}>
         <LogContent params={params} />
       </Suspense>
     </div>

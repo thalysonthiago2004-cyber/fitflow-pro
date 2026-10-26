@@ -20,7 +20,7 @@ export default function ProgressPage() {
   return (
     <div className="grid max-w-4xl gap-8">
       <PageHeader title="Evolução" description="Medidas, recordes e constância nos treinos." />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando evolução" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando evolução" />}>
         <Content />
       </Suspense>
     </div>

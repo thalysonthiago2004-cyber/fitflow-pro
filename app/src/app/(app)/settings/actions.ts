@@ -7,7 +7,9 @@ import { requireUser } from "@/lib/auth/dal";
 import { formString, validationError } from "@/lib/auth/form-state";
 import { type FormState, profileSchema, workspaceSchema } from "@/lib/auth/schemas";
 import { AVATAR_MAX_BYTES, checkJpeg } from "@/lib/images/validate";
+import { normalizeWhatsapp } from "@/lib/phone";
 import { studentProfileSchema } from "@/lib/students/schemas";
+import { RATE_LIMITED, allow } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 const SAVE_ERROR = "Não foi possível salvar. Tente novamente.";
@@ -15,18 +17,25 @@ const SAVE_ERROR = "Não foi possível salvar. Tente novamente.";
 export async function updateProfile(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
   const fullName = formString(formData, "fullName");
+  const whatsappInput = formString(formData, "whatsapp");
+  const values = { fullName, whatsapp: whatsappInput };
   const parsed = profileSchema.safeParse({ fullName });
-  if (!parsed.success) return validationError(parsed.error, { fullName });
+  if (!parsed.success) return validationError(parsed.error, values);
+  // Only trainers show a WhatsApp number (to their students).
+  const whatsapp = user.role === "trainer" ? normalizeWhatsapp(whatsappInput) : null;
+  if (whatsapp === "invalid") {
+    return { status: "error", message: "Revise os campos destacados.", fieldErrors: { whatsapp: ["Use DDD e número, ex.: (11) 98765-4321."] }, values };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("profiles")
-    .update({ full_name: parsed.data.fullName })
+    .update({ full_name: parsed.data.fullName, ...(user.role === "trainer" ? { whatsapp } : {}) })
     .eq("id", user.id);
-  if (error) return { status: "error", message: SAVE_ERROR, values: { fullName } };
+  if (error) return { status: "error", message: SAVE_ERROR, values };
 
   refresh();
-  return { status: "success", message: "Perfil atualizado.", values: { fullName: parsed.data.fullName } };
+  return { status: "success", message: "Perfil atualizado.", values: { fullName: parsed.data.fullName, whatsapp: whatsappInput } };
 }
 
 export async function updateWorkspace(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -63,6 +72,7 @@ export async function uploadAvatar(formData: FormData): Promise<AvatarResult> {
   if (!check.ok) return check;
 
   const supabase = await createClient();
+  if (!(await allow(supabase, "avatar"))) return { ok: false, message: RATE_LIMITED };
   const path = `${user.id}/avatar-${Date.now()}.jpg`;
   const { error: uploadError } = await supabase.storage
     .from("avatars")

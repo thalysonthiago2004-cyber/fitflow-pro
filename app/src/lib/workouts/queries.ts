@@ -1,5 +1,6 @@
 import "server-only";
 
+import { fail, num } from "@/lib/query-utils";
 import { createClient } from "@/lib/supabase/server";
 import type { CardioIntensity, CardioMode, Equipment, MuscleGroup, PlanStatus } from "@/lib/supabase/database.types";
 import type { LastPerformance } from "./progression";
@@ -187,11 +188,7 @@ async function withVideoUrls<T extends Pick<Exercise, "videoPath" | "videoSrc">>
   return exercises;
 }
 
-const num = (value: number | string | null) => (value === null ? null : Number(value));
 
-function fail(what: string, error: { message: string }): never {
-  throw new Error(`Failed to load ${what}: ${error.message}`);
-}
 
 export async function listExercises(): Promise<Exercise[]> {
   const supabase = await createClient();

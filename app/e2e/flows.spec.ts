@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { type Browser, type Page, expect, test } from "@playwright/test";
 
 // Full trainer/student journeys. They need a Supabase backend with e-mail
@@ -663,6 +664,46 @@ test("@supabase TACO foods import into the library with their source", async ({ 
   await expect(page.getByText("Na biblioteca").first()).toBeVisible();
   await page.goto("/foods");
   await expect(page.getByText("Arroz, integral, cozido").first()).toBeVisible();
+});
+
+// WCAG 2.2 AA checks on the signed-in screens, in the dark default theme.
+async function expectAccessible(page: Page, path: string) {
+  await page.goto(path);
+  await page.waitForLoadState("networkidle");
+  const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
+  expect(violations.map((v) => `${path}: ${v.id} (${v.nodes.length}) ${v.nodes[0]?.target.join(" ")}`)).toEqual([]);
+}
+
+test("@supabase signed-in screens pass automated accessibility checks", async ({ browser, page }) => {
+  // Fifteen screens, each fully analysed.
+  test.setTimeout(180_000);
+  await login(page, trainer.email, trainer.password);
+  for (const path of ["/dashboard", "/students", "/workouts", planUrl, "/exercises", "/assessments", "/foods/taco", "/settings"]) {
+    await expectAccessible(page, path);
+  }
+  const studentPage = await newPage(browser, "mobile");
+  await login(studentPage, student.email, student.password);
+  for (const path of ["/dashboard", "/training", "/progress", "/hydration", "/meals", "/anamnese", "/settings"]) {
+    await expectAccessible(studentPage, path);
+  }
+  await studentPage.context().close();
+});
+
+test("@supabase students reach their trainer on WhatsApp", async ({ browser, page }) => {
+  await login(page, trainer.email, trainer.password);
+  await page.goto("/settings");
+  await page.getByLabel("WhatsApp (opcional)").fill("123");
+  await page.getByRole("button", { name: "Salvar perfil" }).click();
+  await expect(page.getByText("Use DDD e número, ex.: (11) 98765-4321.").filter({ visible: true })).toBeVisible();
+  await page.getByLabel("WhatsApp (opcional)").fill("(11) 98765-4321");
+  await page.getByRole("button", { name: "Salvar perfil" }).click();
+  await expect(page.getByText("Perfil atualizado.").filter({ visible: true })).toBeVisible();
+
+  const studentPage = await newPage(browser, "mobile");
+  await login(studentPage, student.email, student.password);
+  const link = studentPage.getByRole("region", { name: "Seu personal" }).getByRole("link", { name: /WhatsApp/ });
+  await expect(link).toHaveAttribute("href", /^https:\/\/wa\.me\/5511987654321\?text=/);
+  await studentPage.context().close();
 });
 
 test("@supabase sets marked offline are kept on the phone and sent when back online", async ({ browser }) => {

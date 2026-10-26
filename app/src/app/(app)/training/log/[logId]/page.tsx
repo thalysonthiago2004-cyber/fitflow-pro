@@ -48,7 +48,7 @@ export default function TrainingLogPage({ params }: PageProps<"/training/log/[lo
         <ArrowLeft className="size-4" aria-hidden />
         Meus treinos
       </Link>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando treino" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando treino" />}>
         <LogContent params={params} />
       </Suspense>
     </div>

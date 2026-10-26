@@ -84,7 +84,7 @@ export default function NutritionPage({ searchParams }: PageProps<"/nutrition">)
           </>
         }
       />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando planos" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando planos" />}>
         <Content searchParams={searchParams} />
       </Suspense>
     </div>

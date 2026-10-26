@@ -96,7 +96,7 @@ export async function listPendingInvitations(workspaceId: string): Promise<Pendi
 }
 
 /** The workspace owner, as the student sees them. */
-export async function getTrainer(workspaceId: string): Promise<{ fullName: string; avatarPath: string | null } | null> {
+export async function getTrainer(workspaceId: string): Promise<{ fullName: string; avatarPath: string | null; whatsapp: string | null } | null> {
   const supabase = await createClient();
   const { data: workspace } = await supabase
     .from("workspaces")
@@ -106,8 +106,8 @@ export async function getTrainer(workspaceId: string): Promise<{ fullName: strin
   if (!workspace) return null;
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, avatar_path")
+    .select("full_name, avatar_path, whatsapp")
     .eq("id", workspace.owner_id)
     .maybeSingle();
-  return profile ? { fullName: profile.full_name, avatarPath: profile.avatar_path } : null;
+  return profile ? { fullName: profile.full_name, avatarPath: profile.avatar_path, whatsapp: profile.whatsapp } : null;
 }

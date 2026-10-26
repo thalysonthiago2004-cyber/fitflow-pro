@@ -42,7 +42,7 @@ export default function FoodPage({ params }: PageProps<"/foods/[foodId]">) {
         <ArrowLeft className="size-4" aria-hidden />
         Alimentos
       </Link>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando alimento" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando alimento" />}>
         <FoodContent params={params} />
       </Suspense>
     </div>

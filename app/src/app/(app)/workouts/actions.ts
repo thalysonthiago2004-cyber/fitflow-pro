@@ -10,6 +10,7 @@ import type { FormState } from "@/lib/auth/schemas";
 import { moveInList } from "@/lib/reorder";
 import { GENERIC_DB_ERROR } from "@/lib/students/errors";
 import type { PlanStatus } from "@/lib/supabase/database.types";
+import { RATE_LIMITED, allow } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import { cardioSchema, newPlanSchema, planSchema, prescriptionSchema, sessionSchema } from "@/lib/workouts/schemas";
 
@@ -493,6 +494,7 @@ export async function duplicatePlan(planId: string, _prev: FormState, formData: 
   }
   if (name.length > 120) return { status: "error", message: "Revise os campos destacados.", fieldErrors: { name: ["Nome muito longo."] }, values };
 
+  if (!(await allow(ctx.supabase, "duplicate_plan"))) return { status: "error", message: RATE_LIMITED, values };
   const { data, error } = await ctx.supabase.rpc("duplicate_workout_plan", {
     p_plan: planId,
     // Generated RPC types mark every argument as non-null; null makes a template.

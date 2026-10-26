@@ -9,10 +9,10 @@ import { Input } from "@/components/ui/input";
 import { requireStaff } from "@/lib/auth/dal";
 import { formatNumber } from "@/lib/format";
 import { listFoods } from "@/lib/nutrition/queries";
+import { normalize } from "@/lib/text";
 
 export const metadata: Metadata = { title: "Alimentos" };
 
-const normalize = (t: string) => t.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 
 async function FoodsContent({ searchParams }: Pick<PageProps<"/foods">, "searchParams">) {
   const { q } = await searchParams;
@@ -74,7 +74,7 @@ export default function FoodsPage({ searchParams }: PageProps<"/foods">) {
           </>
         }
       />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando alimentos" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando alimentos" />}>
         <FoodsContent searchParams={searchParams} />
       </Suspense>
     </div>

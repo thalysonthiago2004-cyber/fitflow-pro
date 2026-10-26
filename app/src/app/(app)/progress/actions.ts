@@ -10,6 +10,7 @@ import type { FormState } from "@/lib/auth/schemas";
 import { PHOTO_MAX_BYTES, checkJpeg } from "@/lib/images/validate";
 import { MEASUREMENT_FIELDS, measurementSchema, progressPhotoSchema } from "@/lib/progress/schemas";
 import { GENERIC_DB_ERROR } from "@/lib/students/errors";
+import { RATE_LIMITED, allow } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 const id = z.uuid();
@@ -64,6 +65,7 @@ export async function uploadProgressPhoto(formData: FormData): Promise<PhotoResu
   if (!check.ok) return check;
 
   const supabase = await createClient();
+  if (!(await allow(supabase, "progress_photo"))) return { ok: false, message: RATE_LIMITED };
   const path = `${user.workspace.id}/${user.id}/${randomUUID()}.jpg`;
   const { error: uploadError } = await supabase.storage.from("progress-photos").upload(path, check.file, { contentType: "image/jpeg" });
   if (uploadError) return { ok: false, message: "Não foi possível enviar a foto. Tente novamente." };

@@ -119,7 +119,7 @@ export default function TrainingPage() {
   return (
     <div className="grid gap-8">
       <PageHeader title="Meus treinos" description="Seu plano atual e o histórico de treinos." />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando treinos" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando treinos" />}>
         <TrainingContent />
       </Suspense>
     </div>

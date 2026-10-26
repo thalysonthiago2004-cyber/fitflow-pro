@@ -36,7 +36,7 @@ export default function NewMealPlanPage({ searchParams }: PageProps<"/nutrition/
         Planos alimentares
       </Link>
       <PageHeader title="Novo plano alimentar" description="Escolha o aluno e dê um nome. Depois você monta as refeições." />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando" />}>
         <Content searchParams={searchParams} />
       </Suspense>
     </div>

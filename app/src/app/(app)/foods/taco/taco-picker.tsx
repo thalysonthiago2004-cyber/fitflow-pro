@@ -6,10 +6,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatNumber } from "@/lib/format";
+import { normalize } from "@/lib/text";
 import type { TacoFood } from "@/lib/nutrition/taco";
 import { importTacoFoods } from "../actions";
 
-const normalize = (text: string) => text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 
 export function TacoPicker({ foods, existing }: { foods: TacoFood[]; existing: string[] }) {
   const [query, setQuery] = useState("");

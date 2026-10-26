@@ -45,7 +45,7 @@ export default function HistoryPage() {
         Meus treinos
       </Link>
       <PageHeader title="Histórico de treinos" description="Seus últimos 100 treinos concluídos." />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando histórico" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando histórico" />}>
         <HistoryContent />
       </Suspense>
     </div>

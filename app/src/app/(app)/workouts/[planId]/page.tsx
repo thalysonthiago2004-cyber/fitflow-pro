@@ -111,7 +111,7 @@ export default function PlanPage({ params }: PageProps<"/workouts/[planId]">) {
         <ArrowLeft className="size-4" aria-hidden />
         Planos de treino
       </Link>
-      <Suspense fallback={<div className="h-[32rem] animate-pulse rounded-xl bg-muted" aria-label="Carregando plano" />}>
+      <Suspense fallback={<div role="status" className="h-[32rem] animate-pulse rounded-xl bg-muted" aria-label="Carregando plano" />}>
         <PlanBuilder params={params} />
       </Suspense>
     </div>

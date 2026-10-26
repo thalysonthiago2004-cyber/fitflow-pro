@@ -7,15 +7,12 @@ import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { requireStaff } from "@/lib/auth/dal";
+import { normalize } from "@/lib/text";
 import type { MuscleGroup } from "@/lib/supabase/database.types";
 import { EQUIPMENT_LABELS, MUSCLE_GROUP_LABELS } from "@/lib/workouts/labels";
 import { listExercises } from "@/lib/workouts/queries";
 
 export const metadata: Metadata = { title: "Exercícios" };
-
-function normalize(text: string) {
-  return text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
-}
 
 async function ExercisesContent({ searchParams }: Pick<PageProps<"/exercises">, "searchParams">) {
   const params = await searchParams;
@@ -104,7 +101,7 @@ export default function ExercisesPage({ searchParams }: PageProps<"/exercises">)
           </Link>
         }
       />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando exercícios" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando exercícios" />}>
         <ExercisesContent searchParams={searchParams} />
       </Suspense>
     </div>

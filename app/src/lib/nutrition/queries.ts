@@ -1,5 +1,6 @@
 import "server-only";
 
+import { fail } from "@/lib/query-utils";
 import { createClient } from "@/lib/supabase/server";
 import type { FoodBasis, MealItemUnit, PlanStatus } from "@/lib/supabase/database.types";
 import { type FoodValues, type Nutrients, itemNutrients, sumNutrients } from "./calc";
@@ -82,9 +83,6 @@ function toFood(row: FoodRow): Food {
   };
 }
 
-function fail(what: string, error: { message: string }): never {
-  throw new Error(`Failed to load ${what}: ${error.message}`);
-}
 
 export async function listFoods(workspaceId: string): Promise<Food[]> {
   const supabase = await createClient();

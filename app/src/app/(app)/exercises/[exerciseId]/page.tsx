@@ -93,7 +93,7 @@ export default function ExercisePage({ params }: PageProps<"/exercises/[exercise
         <ArrowLeft className="size-4" aria-hidden />
         Exercícios
       </Link>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando exercício" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando exercício" />}>
         <ExerciseContent params={params} />
       </Suspense>
     </div>

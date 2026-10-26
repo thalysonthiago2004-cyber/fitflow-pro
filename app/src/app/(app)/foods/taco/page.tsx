@@ -27,7 +27,7 @@ export default function TacoPage() {
         title="Importar da TACO"
         description="Tabela Brasileira de Composição de Alimentos, 4ª edição (NEPA/UNICAMP, 2011). Valores por 100 g da parte comestível; a fonte fica registrada em cada alimento e você pode ajustar depois."
       />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando tabela" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando tabela" />}>
         <Content />
       </Suspense>
     </div>

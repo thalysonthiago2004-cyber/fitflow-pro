@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth/dal";
+import { RATE_LIMITED, allow } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 // LGPD access/portability: everything the signed-in user can see about
@@ -8,6 +9,7 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user) return new Response("Não autenticado.", { status: 401 });
   const supabase = await createClient();
+  if (!(await allow(supabase, "data_export"))) return new Response(RATE_LIMITED, { status: 429 });
   const own = <T>(result: { data: T | null }) => result.data ?? [];
 
   const common = {

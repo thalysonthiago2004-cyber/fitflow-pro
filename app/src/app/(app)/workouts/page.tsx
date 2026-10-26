@@ -102,7 +102,7 @@ export default function WorkoutsPage({ searchParams }: PageProps<"/workouts">) {
           </>
         }
       />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando planos" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando planos" />}>
         <PlansContent searchParams={searchParams} />
       </Suspense>
     </div>

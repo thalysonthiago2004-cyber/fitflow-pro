@@ -159,7 +159,7 @@ export default function StudentReportPage({ params }: PageProps<"/students/[stud
         <ArrowLeft className="size-4" aria-hidden />
         Alunos
       </Link>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando relatório" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando relatório" />}>
         <Report params={params} />
       </Suspense>
     </div>

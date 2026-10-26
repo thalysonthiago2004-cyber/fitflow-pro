@@ -8,6 +8,7 @@ import { formString } from "@/lib/auth/form-state";
 import type { FormState } from "@/lib/auth/schemas";
 import { GENERIC_DB_ERROR } from "@/lib/students/errors";
 import { notifyActivity } from "@/lib/push/notify";
+import { RATE_LIMITED, allow } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 const id = z.uuid();
@@ -22,6 +23,7 @@ export async function addComment(logId: string, _prev: FormState, formData: Form
   if (body.length > 1000) return { status: "error", message: "Revise os campos destacados.", fieldErrors: { body: ["Use no máximo 1000 caracteres."] }, values: { body } };
 
   const supabase = await createClient();
+  if (!(await allow(supabase, "comment"))) return { status: "error", message: RATE_LIMITED, values: { body } };
   const { error } = await supabase.from("workout_comments").insert({ log_id: logId, author_id: user.id, body });
   if (error) return { status: "error", message: GENERIC_DB_ERROR, values: { body } };
   after(() => notifyActivity({ type: "comment", logId, authorId: user.id }));
