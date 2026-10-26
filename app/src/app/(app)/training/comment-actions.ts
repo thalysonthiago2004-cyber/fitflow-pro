@@ -1,11 +1,13 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth/dal";
 import { formString } from "@/lib/auth/form-state";
 import type { FormState } from "@/lib/auth/schemas";
 import { GENERIC_DB_ERROR } from "@/lib/students/errors";
+import { notifyActivity } from "@/lib/push/notify";
 import { createClient } from "@/lib/supabase/server";
 
 const id = z.uuid();
@@ -22,6 +24,7 @@ export async function addComment(logId: string, _prev: FormState, formData: Form
   const supabase = await createClient();
   const { error } = await supabase.from("workout_comments").insert({ log_id: logId, author_id: user.id, body });
   if (error) return { status: "error", message: GENERIC_DB_ERROR, values: { body } };
+  after(() => notifyActivity({ type: "comment", logId, authorId: user.id }));
   refresh();
   return { status: "success", message: "Comentário enviado." };
 }

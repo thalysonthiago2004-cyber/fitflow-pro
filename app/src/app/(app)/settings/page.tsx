@@ -34,7 +34,7 @@ async function SettingsContent() {
   const supabase = await createClient();
   const [body, prefs] = await Promise.all([
     user.role === "student" ? getBodyProfile(user.id) : null,
-    supabase.from("notification_preferences").select("workout_reminder_time").eq("user_id", user.id).maybeSingle(),
+    supabase.from("notification_preferences").select("workout_reminder_time, activity_alerts").eq("user_id", user.id).maybeSingle(),
   ]);
 
   return (
@@ -59,7 +59,7 @@ async function SettingsContent() {
       )}
 
       <SettingsCard title="Notificações" description="Lembretes no celular, mesmo com o app fechado.">
-        <NotificationsCard isStudent={user.role === "student"} workoutTime={prefs.data?.workout_reminder_time?.slice(0, 5) ?? null} />
+        <NotificationsCard isStudent={user.role === "student"} workoutTime={prefs.data?.workout_reminder_time?.slice(0, 5) ?? null} activityAlerts={prefs.data?.activity_alerts ?? true} />
       </SettingsCard>
 
       <SettingsCard title="Segurança" description="Gerencie o acesso à sua conta.">

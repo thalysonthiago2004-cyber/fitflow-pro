@@ -707,16 +707,19 @@ export type Database = {
       }
       notification_preferences: {
         Row: {
+          activity_alerts: boolean
           updated_at: string
           user_id: string
           workout_reminder_time: string | null
         }
         Insert: {
+          activity_alerts?: boolean
           updated_at?: string
           user_id: string
           workout_reminder_time?: string | null
         }
         Update: {
+          activity_alerts?: boolean
           updated_at?: string
           user_id?: string
           workout_reminder_time?: string | null

@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { getPublicEnv } from "@/lib/env";
 import type { Database } from "./database.types";
+import { loggingFetch } from "./logging-fetch";
 
 // Create a new client per request; never share one across requests.
 export async function createClient() {
@@ -18,6 +19,7 @@ export async function createClient() {
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     {
+      global: { fetch: loggingFetch("server") },
       cookies: {
         getAll() {
           return cookieStore.getAll();

@@ -2,11 +2,13 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth/dal";
 import { formString } from "@/lib/auth/form-state";
 import type { FormState } from "@/lib/auth/schemas";
 import { GENERIC_DB_ERROR } from "@/lib/students/errors";
+import { notifyActivity } from "@/lib/push/notify";
 import { createClient } from "@/lib/supabase/server";
 import { cardioLogSchema, setLogSchema } from "@/lib/workouts/schemas";
 
@@ -153,6 +155,7 @@ export async function finishWorkout(logId: string, _prev: FormState, formData: F
     .select("id");
   if (error || !data?.length) return { status: "error", message: GENERIC_DB_ERROR, values: { notes } };
 
+  after(() => notifyActivity({ type: "workout_completed", logId }));
   refresh();
   redirect(`/training/log/${logId}`);
 }

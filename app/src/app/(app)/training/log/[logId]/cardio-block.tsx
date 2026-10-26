@@ -1,16 +1,18 @@
 "use client";
 
-import { Check, LoaderCircle, Timer } from "lucide-react";
+import { Check, CloudOff, LoaderCircle, Timer } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatNumber } from "@/lib/format";
 import type { CardioLog, CardioPrescription } from "@/lib/workouts/queries";
 import { cn } from "@/lib/utils";
-import { saveCardio } from "../../actions";
 import { IntervalTimer } from "./interval-timer";
 
 export type CardioStatus = { completed: boolean; saving: boolean };
+export type CardioValues = { durationMinutes: string; distanceKm: string; avgHr: string; rpe: string; roundsDone: string };
+/** Saves now or queues for later; `queued` means it waits for a connection. */
+export type CardioSave = (values: CardioValues & { completed: boolean }) => Promise<{ ok: true; queued: boolean } | { ok: false; message: string }>;
 
 const input =
   "h-11 w-full min-w-0 rounded-lg border border-input bg-transparent px-3 text-base tabular-nums outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-70 dark:bg-input/30";
@@ -23,14 +25,16 @@ const RPE_OPTIONS = [
 // What the student actually did in a cardio block. Values are saved when the
 // block is marked done; until then they stay editable.
 export function CardioBlock({
-  logId,
   item,
   saved,
+  pending = false,
+  onSave,
   onStatus,
 }: {
-  logId: string;
   item: CardioPrescription;
   saved: CardioLog | undefined;
+  pending?: boolean;
+  onSave: CardioSave;
   onStatus: (status: CardioStatus) => void;
 }) {
   const target = item.cardio;
@@ -56,7 +60,7 @@ export function CardioBlock({
   async function toggle() {
     const completed = !status.completed;
     report({ completed, saving: true });
-    const result = await saveCardio({ logId, sessionExerciseId: item.id, ...values, completed });
+    const result = await onSave({ ...values, completed });
     if (!result.ok) {
       report({ completed: status.completed, saving: false });
       toast.error(result.message);
@@ -126,6 +130,12 @@ export function CardioBlock({
         {status.saving ? <LoaderCircle className="animate-spin" aria-hidden /> : <Check aria-hidden />}
         {status.completed ? `Cardio concluído — ${name}` : `Concluir cardio — ${name}`}
       </Button>
+      {pending && (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <CloudOff className="size-3.5" aria-hidden />
+          Guardado no celular; será enviado quando a internet voltar.
+        </p>
+      )}
       <p className="text-xs text-muted-foreground">Esforço percebido: 1 = muito leve, 10 = máximo.</p>
     </div>
   );

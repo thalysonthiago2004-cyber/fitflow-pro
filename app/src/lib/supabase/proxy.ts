@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getPublicEnv } from "@/lib/env";
 import type { Database } from "./database.types";
+import { loggingFetch } from "./logging-fetch";
 
 // Default deny: every route needs a session unless listed here, so new pages
 // are protected without having to remember to register them.
@@ -27,6 +28,7 @@ export async function updateSession(request: NextRequest) {
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     {
+      global: { fetch: loggingFetch("proxy") },
       cookies: {
         getAll() {
           return request.cookies.getAll();

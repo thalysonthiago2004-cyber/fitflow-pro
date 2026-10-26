@@ -664,6 +664,30 @@ test("@supabase TACO foods import into the library with their source", async ({ 
   await expect(page.getByText("Arroz, integral, cozido").first()).toBeVisible();
 });
 
+test("@supabase sets marked offline are kept on the phone and sent when back online", async ({ browser }) => {
+  const studentPage = await newPage(browser, "mobile");
+  await login(studentPage, student.email, student.password);
+  await studentPage.goto("/training");
+  await studentPage.getByRole("link", { name: /Treino A/ }).first().click();
+  await studentPage.getByRole("button", { name: "Iniciar treino" }).click();
+  await expect(studentPage).toHaveURL(/\/training\/log\/[0-9a-f-]{36}$/);
+
+  await studentPage.context().setOffline(true);
+  await studentPage.getByLabel("Repetições — Agachamento livre, série 1").fill("10");
+  await studentPage.getByRole("button", { name: "Concluir Agachamento livre, série 1" }).click();
+  await expect(studentPage.getByRole("button", { name: "Desmarcar Agachamento livre, série 1" })).toBeVisible();
+  await expect(studentPage.getByText(/Sem conexão: 1 registro guardado no celular/)).toBeVisible();
+  await expect(studentPage.getByRole("button", { name: "Concluir treino" })).toBeDisabled();
+
+  await studentPage.context().setOffline(false);
+  await expect(studentPage.getByText(/Sem conexão:/)).toHaveCount(0, { timeout: 15_000 });
+  await studentPage.reload();
+  await expect(studentPage.getByRole("button", { name: "Desmarcar Agachamento livre, série 1" })).toBeVisible();
+  await studentPage.getByRole("button", { name: "Descartar treino" }).click();
+  await studentPage.getByRole("alertdialog").getByRole("button", { name: /Descartar/ }).click();
+  await studentPage.context().close();
+});
+
 test("@supabase a student deletes their account", async ({ browser, page }) => {
   const studentPage = await newPage(browser, "mobile");
   await login(studentPage, student.email, student.password);

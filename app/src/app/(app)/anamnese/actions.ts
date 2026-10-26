@@ -1,11 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { requireUser } from "@/lib/auth/dal";
 import { formString, validationError } from "@/lib/auth/form-state";
 import type { FormState } from "@/lib/auth/schemas";
 import { PARQ_DETAILS, PARQ_QUESTIONS, parqSchema } from "@/lib/students/parq";
 import { GENERIC_DB_ERROR } from "@/lib/students/errors";
+import { notifyActivity } from "@/lib/push/notify";
 import { createClient } from "@/lib/supabase/server";
 
 // Each submission is kept, so the trainer sees when answers changed.
@@ -24,5 +26,7 @@ export async function submitQuestionnaire(_prev: FormState, formData: FormData):
     needs_clearance: parsed.data.needsClearance,
   });
   if (error) return { status: "error", message: GENERIC_DB_ERROR, values };
+  const workspaceId = user.workspace.id;
+  after(() => notifyActivity({ type: "questionnaire", workspaceId, studentId: user.id, needsClearance: parsed.data.needsClearance }));
   redirect("/anamnese?enviado=1");
 }

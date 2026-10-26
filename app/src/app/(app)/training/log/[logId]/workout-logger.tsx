@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, HeartPulse, Layers, LoaderCircle, Timer, TrendingUp, X } from "lucide-react";
+import { Check, ChevronDown, CloudOff, HeartPulse, Layers, LoaderCircle, RefreshCw, Timer, TrendingUp, X } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmAction } from "@/components/confirm-action";
@@ -14,9 +14,10 @@ import { formatDate, formatNumber } from "@/lib/format";
 import { formatPrescription, formatRest, formatSetReps, groupSupersets, repsForSet, supersetLabel } from "@/lib/workouts/labels";
 import { type LastPerformance, suggestLoad, workingLoad } from "@/lib/workouts/progression";
 import type { LogDetail, Prescription, StrengthPrescription } from "@/lib/workouts/queries";
+import { type QueuedOp, dropOp, enqueue, flushQueue, isNetworkError, readQueue } from "@/lib/offline/queue";
 import { cn } from "@/lib/utils";
-import { discardWorkout, finishWorkout, saveSet } from "../../actions";
-import { CardioBlock, type CardioStatus } from "./cardio-block";
+import { discardWorkout, finishWorkout, saveCardio, saveSet } from "../../actions";
+import { CardioBlock, type CardioSave, type CardioStatus } from "./cardio-block";
 
 type SetState = { reps: string; loadKg: string; completed: boolean; saving: boolean };
 
@@ -45,8 +46,21 @@ function initialSets(log: LogDetail): Record<string, SetState[]> {
   );
 }
 
+type SetPayload = Parameters<typeof saveSet>[0];
+type CardioPayload = Parameters<typeof saveCardio>[0];
+type SaveOutcome = { ok: true; queued: boolean } | { ok: false; message: string };
+
+const setKey = (itemId: string, setNumber: number) => `set:${itemId}:${setNumber}`;
+const cardioKey = (itemId: string) => `cardio:${itemId}`;
+const send = (op: QueuedOp) => (op.kind === "set" ? saveSet(op.payload as SetPayload) : saveCardio(op.payload as CardioPayload));
+
 export function WorkoutLogger({ log }: { log: LogDetail }) {
   const [sets, setSets] = useState(() => initialSets(log));
+  // Keys of saves waiting for a connection (also kept in localStorage).
+  const [pending, setPending] = useState<Set<string>>(() => new Set());
+  // Pending cardio values restored after a reload; bumping `version` remounts the blocks with them.
+  const [restoredCardio, setRestoredCardio] = useState<{ values: Record<string, CardioPayload>; version: number }>({ values: {}, version: 0 });
+  const [syncing, setSyncing] = useState(false);
   const [cardio, setCardio] = useState<Record<string, CardioStatus>>(() =>
     Object.fromEntries(
       log.exercises
@@ -72,6 +86,92 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [saving]);
 
+  const refreshPending = () => setPending(new Set(readQueue(log.id).map((o) => o.key)));
+
+  async function sync(announce: boolean) {
+    setSyncing(true);
+    const outcome = await flushQueue(log.id, send);
+    setSyncing(false);
+    refreshPending();
+    for (const rejected of outcome.rejected) toast.error(rejected.message);
+    if (outcome.sent && announce) toast.success(`${outcome.sent} ${outcome.sent === 1 ? "registro enviado" : "registros enviados"}.`);
+  }
+
+  // Restore what was saved offline before a reload, then send it when possible.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      const ops = readQueue(log.id);
+      if (ops.length === 0) return;
+      setSets((current) => {
+        const next = { ...current };
+        for (const op of ops) {
+          if (op.kind !== "set") continue;
+          const p = op.payload as SetPayload;
+          const row = next[p.sessionExerciseId];
+          if (!row?.[p.setNumber - 1]) continue;
+          next[p.sessionExerciseId] = row.map((set, i) => (i === p.setNumber - 1 ? { ...set, reps: p.reps, loadKg: p.loadKg, completed: p.completed } : set));
+        }
+        return next;
+      });
+      const cardioOps = ops.filter((o) => o.kind === "cardio").map((o) => o.payload as CardioPayload);
+      if (cardioOps.length) setRestoredCardio((c) => ({ values: Object.fromEntries(cardioOps.map((p) => [p.sessionExerciseId, p])), version: c.version + 1 }));
+      refreshPending();
+      if (navigator.onLine) await sync(true);
+    })();
+    const onOnline = () => void sync(true);
+    window.addEventListener("online", onOnline);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("online", onOnline);
+    };
+    // Runs once per workout; sync reads the latest queue itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [log.id]);
+
+  // While something is waiting, retry every 30 s (the "online" event is not always reliable).
+  useEffect(() => {
+    if (pending.size === 0) return;
+    const timer = setInterval(() => {
+      if (navigator.onLine) void sync(true);
+    }, 30_000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending.size]);
+
+  /** Saves now; without a connection the op is queued and the UI keeps the new state. */
+  async function sendOrQueue(op: QueuedOp): Promise<SaveOutcome> {
+    const queue = () => {
+      enqueue(log.id, op);
+      refreshPending();
+      return { ok: true as const, queued: true };
+    };
+    if (navigator.onLine === false) return queue();
+    try {
+      const result = await send(op);
+      if (!result.ok) return result;
+      dropOp(log.id, op.key);
+      refreshPending();
+      return { ok: true, queued: false };
+    } catch (error) {
+      if (isNetworkError(error)) return queue();
+      return { ok: false, message: "Não foi possível salvar. Tente novamente." };
+    }
+  }
+
+  function cardioSaver(itemId: string): CardioSave {
+    return (values) => sendOrQueue({ key: cardioKey(itemId), kind: "cardio", payload: { logId: log.id, sessionExerciseId: itemId, ...values } satisfies CardioPayload });
+  }
+
+  function restoredLog(itemId: string) {
+    const p = restoredCardio.values[itemId];
+    if (!p) return log.cardio.find((c) => c.sessionExerciseId === itemId);
+    const n = (v: string) => (v.trim() === "" ? null : Number(v.replace(",", ".")));
+    return { sessionExerciseId: itemId, durationMinutes: n(p.durationMinutes), distanceKm: n(p.distanceKm), avgHr: n(p.avgHr), rpe: n(p.rpe), roundsDone: n(p.roundsDone), completed: p.completed };
+  }
+
   function update(itemId: string, index: number, patch: Partial<SetState>) {
     setSets((current) => ({
       ...current,
@@ -84,13 +184,10 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
     const set = sets[item.id][index];
     const completed = !set.completed;
     update(item.id, index, { completed, saving: true });
-    const result = await saveSet({
-      logId: log.id,
-      sessionExerciseId: item.id,
-      setNumber: index + 1,
-      reps: set.reps,
-      loadKg: set.loadKg,
-      completed,
+    const result = await sendOrQueue({
+      key: setKey(item.id, index + 1),
+      kind: "set",
+      payload: { logId: log.id, sessionExerciseId: item.id, setNumber: index + 1, reps: set.reps, loadKg: set.loadKg, completed } satisfies SetPayload,
     });
     update(item.id, index, { saving: false, ...(result.ok ? {} : { completed: set.completed }) });
     if (!result.ok) return void toast.error(result.message);
@@ -116,6 +213,19 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
         </div>
       </div>
 
+      {pending.size > 0 && (
+        <div role="status" className="flex flex-wrap items-center gap-3 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm">
+          <CloudOff className="size-5 shrink-0 text-warning" aria-hidden />
+          <span className="min-w-0 flex-1">
+            Sem conexão: {pending.size} {pending.size === 1 ? "registro guardado" : "registros guardados"} no celular. O envio é automático quando a internet voltar.
+          </span>
+          <Button type="button" variant="outline" size="sm" disabled={syncing} onClick={() => void sync(true)}>
+            <RefreshCw className={cn(syncing && "animate-spin motion-reduce:animate-none")} aria-hidden />
+            Enviar agora
+          </Button>
+        </div>
+      )}
+
       <ol className="grid gap-4">
         {groupSupersets(log.exercises).map((block) => {
           if (block.length === 1) {
@@ -136,9 +246,11 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
                 <HowTo item={item} />
                 {item.kind === "cardio" ? (
                   <CardioBlock
-                    logId={log.id}
+                    key={`${item.id}-${restoredCardio.version}`}
                     item={item}
-                    saved={log.cardio.find((c) => c.sessionExerciseId === item.id)}
+                    saved={restoredLog(item.id)}
+                    pending={pending.has(cardioKey(item.id))}
+                    onSave={cardioSaver(item.id)}
                     onStatus={(status) => setCardio((current) => ({ ...current, [item.id]: status }))}
                   />
                 ) : (
@@ -151,6 +263,7 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
                         index={index}
                         set={set}
                         rowLabel={String(index + 1)}
+                        pending={pending.has(setKey(item.id, index + 1))}
                         onChange={(patch) => update(item.id, index, patch)}
                         onToggle={() => toggle(item, index, item.restSeconds)}
                       />
@@ -201,6 +314,7 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
                         index={round}
                         set={sets[item.id][round]}
                         rowLabel={item.exercise.name}
+                        pending={pending.has(setKey(item.id, round + 1))}
                         onChange={(patch) => update(item.id, round, patch)}
                         onToggle={() => toggle(item, round, position === inRound.length - 1 ? groupRest : null)}
                       />
@@ -213,22 +327,24 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
         })}
       </ol>
 
-      <FinishWorkout logId={log.id} done={done} planned={planned} unit={unit} />
+      <FinishWorkout logId={log.id} done={done} planned={planned} unit={unit} pendingSaves={pending.size} />
       {rest && <RestTimer key={rest.run} total={rest.total} onClose={() => setRest(null)} />}
     </div>
   );
 }
 
 type SetRowProps = {
-item: StrengthPrescription;
-index: number;
-set: SetState;
-rowLabel: string;
-onChange: (patch: Partial<SetState>) => void;
-onToggle: () => void;
+  item: StrengthPrescription;
+  index: number;
+  set: SetState;
+  rowLabel: string;
+  /** Saved on the phone, waiting for a connection. */
+  pending: boolean;
+  onChange: (patch: Partial<SetState>) => void;
+  onToggle: () => void;
 };
 
-function SetRow({ item, index, set, rowLabel, onChange, onToggle }: SetRowProps) {
+function SetRow({ item, index, set, rowLabel, pending, onChange, onToggle }: SetRowProps) {
   const label = `${item.exercise.name}, série ${index + 1}`;
   return (
     <div
@@ -237,7 +353,7 @@ function SetRow({ item, index, set, rowLabel, onChange, onToggle }: SetRowProps)
         set.completed && "bg-brand/15 dark:bg-brand/10",
       )}
     >
-      <span className={cn("text-sm font-semibold tabular-nums", rowLabel.length > 2 ? "max-w-28 truncate text-xs" : "text-center")}>{rowLabel}</span>
+      <span className={cn("text-sm font-semibold tabular-nums", rowLabel.length > 2 ? "max-w-28 truncate text-xs" : "text-center")}>{rowLabel}{pending && <CloudOff className="ml-1 inline size-3.5 text-warning" aria-label="aguardando envio" />}</span>
       <input
         aria-label={`Repetições — ${label}`}
         inputMode="numeric"
@@ -332,7 +448,7 @@ function HowTo({ item }: { item: Prescription }) {
   );
 }
 
-function FinishWorkout({ logId, done, planned, unit }: { logId: string; done: number; planned: number; unit: string }) {
+function FinishWorkout({ logId, done, planned, unit, pendingSaves }: { logId: string; done: number; planned: number; unit: string; pendingSaves: number }) {
   const [state, action, pending] = useActionState(finishWorkout.bind(null, logId), initialFormState);
 
   return (
@@ -354,8 +470,11 @@ function FinishWorkout({ logId, done, planned, unit }: { logId: string; done: nu
             Você concluiu {done} de {planned} {unit}. Só o que foi marcado como feito entra no histórico como concluído.
           </p>
         )}
+        {pendingSaves > 0 && (
+          <p className="text-sm text-warning">Aguarde a conexão: ainda há registros guardados no celular. O treino pode ser concluído assim que eles forem enviados.</p>
+        )}
         <div className="flex flex-col gap-2 sm:flex-row">
-          <SubmitButton pending={pending} pendingLabel="Salvando…" size="lg">
+          <SubmitButton pending={pending} pendingLabel="Salvando…" size="lg" disabled={pendingSaves > 0}>
             Concluir treino
           </SubmitButton>
           <ConfirmAction

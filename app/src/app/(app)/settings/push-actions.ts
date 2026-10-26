@@ -66,3 +66,16 @@ export async function saveWorkoutReminder(time: string): Promise<Result> {
   refresh();
   return { ok: true };
 }
+
+/** Trainers: pushes about students' finished workouts, comments and questionnaires. */
+export async function saveActivityAlerts(enabled: boolean): Promise<Result> {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const { data: existing } = await supabase.from("notification_preferences").select("user_id").eq("user_id", user.id).maybeSingle();
+  const { error } = existing
+    ? await supabase.from("notification_preferences").update({ activity_alerts: enabled === true }).eq("user_id", user.id)
+    : await supabase.from("notification_preferences").insert({ user_id: user.id, activity_alerts: enabled === true });
+  if (error) return { ok: false, message: FAILED };
+  refresh();
+  return { ok: true };
+}

@@ -114,7 +114,7 @@ select vault.create_secret('<CRON_SECRET>', 'reminders_secret');
 | `npm run typecheck` | Route type generation + TypeScript |
 | `npm test` | Unit tests and RLS boundary tests (PGlite runs the real migrations in-process) |
 | `npm run test:e2e` | Playwright against a production build: public pages, guest redirects, validation, theme (mobile + desktop) |
-| `E2E_SUPABASE=1 npm run test:e2e -- e2e/flows.spec.ts --project=desktop` | Full trainer/student journeys. Needs a backend with **e-mail confirmation disabled** (a disposable Supabase project, or a local stack) and the `NEXT_PUBLIC_*` variables pointing at it |
+| `E2E_SUPABASE=1 E2E_SUPABASE_URL=… E2E_SUPABASE_KEY=… npm run test:e2e -- e2e/flows.spec.ts --project=desktop` | Full trainer/student journeys. Needs a **test** Supabase project with e-mail confirmation disabled (`fitflow-pro-test`); the config refuses the production project |
 
 The PGlite tests verify policies and grants but do not replace testing against a Supabase project.
 

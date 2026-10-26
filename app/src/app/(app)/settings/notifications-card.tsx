@@ -4,7 +4,7 @@ import { Bell, BellOff, LoaderCircle, Send } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { removePushSubscription, savePushSubscription, saveWorkoutReminder, sendTestPush } from "./push-actions";
+import { removePushSubscription, saveActivityAlerts, savePushSubscription, saveWorkoutReminder, sendTestPush } from "./push-actions";
 
 type Support = "checking" | "unsupported" | "ios-install" | "denied" | "off" | "on";
 
@@ -25,7 +25,7 @@ async function currentSubscription() {
 }
 
 // Push needs a service worker and, on iPhone, the app installed on the home screen.
-export function NotificationsCard({ isStudent, workoutTime }: { isStudent: boolean; workoutTime: string | null }) {
+export function NotificationsCard({ isStudent, workoutTime, activityAlerts }: { isStudent: boolean; workoutTime: string | null; activityAlerts: boolean }) {
   const [support, setSupport] = useState<Support>("checking");
   const [pending, startTransition] = useTransition();
 
@@ -110,6 +110,28 @@ export function NotificationsCard({ isStudent, workoutTime }: { isStudent: boole
             </Button>
           )}
         </div>
+      )}
+
+      {!isStudent && (
+        <label className="flex items-start gap-3 text-sm">
+          <input
+            type="checkbox"
+            defaultChecked={activityAlerts}
+            className="mt-0.5 size-5 shrink-0 accent-[var(--brand)]"
+            onChange={(e) => {
+              const enabled = e.target.checked;
+              startTransition(async () => {
+                const result = await saveActivityAlerts(enabled);
+                if (result.ok) toast.success(enabled ? "Avisos dos alunos ligados." : "Avisos dos alunos desligados.");
+                else toast.error(result.message);
+              });
+            }}
+          />
+          <span>
+            <span className="font-medium">Avisos dos alunos</span>
+            <span className="block text-muted-foreground">Treino concluído, comentário novo e anamnese respondida.</span>
+          </span>
+        </label>
       )}
 
       {isStudent && (
