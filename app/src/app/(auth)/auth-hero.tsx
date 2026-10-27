@@ -27,7 +27,7 @@ export function AuthHero() {
       <div className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/60 to-background/20" aria-hidden />
 
       <div className="flex h-full min-h-72 flex-col justify-between gap-8 p-5 sm:p-10 lg:min-h-dvh lg:gap-10 lg:p-12">
-        <Link href="/" className="w-fit rounded-lg focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
+        <Link href="/sobre" className="w-fit rounded-lg focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
           <BrandLogo size={32} className="lg:[&_svg]:size-9" />
           <span className="sr-only">Página inicial</span>
         </Link>

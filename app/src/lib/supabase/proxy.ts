@@ -8,7 +8,7 @@ import { loggingFetch } from "./logging-fetch";
 // Default deny: every route needs a session unless listed here, so new pages
 // are protected without having to remember to register them.
 // /api/cron authenticates with its own bearer secret.
-const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/auth", "/invite", "/termos", "/privacidade", "/api/cron"];
+const PUBLIC_PATHS = ["/sobre", "/login", "/signup", "/forgot-password", "/auth", "/invite", "/termos", "/privacidade", "/api/cron"];
 const GUEST_ONLY_PATHS = ["/login", "/signup", "/forgot-password"];
 
 function matches(pathname: string, prefixes: string[]) {
@@ -16,7 +16,7 @@ function matches(pathname: string, prefixes: string[]) {
 }
 
 export function isPublicPath(pathname: string) {
-  return pathname === "/" || matches(pathname, PUBLIC_PATHS);
+  return matches(pathname, PUBLIC_PATHS);
 }
 
 // Refreshes the auth session cookie and applies optimistic redirects.
@@ -57,6 +57,9 @@ export async function updateSession(request: NextRequest) {
     response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
     return redirect;
   };
+
+  // The app opens on the login screen (the product page lives at /sobre).
+  if (pathname === "/") return redirectTo(isAuthenticated ? "/dashboard" : "/login");
 
   if (!isAuthenticated && !isPublicPath(pathname)) {
     const next = encodeURIComponent(`${pathname}${search}`);

@@ -4,7 +4,7 @@ vi.mock("@/lib/env", () => ({ getPublicEnv: () => ({}) }));
 const { isPublicPath } = await import("./proxy");
 
 describe("isPublicPath", () => {
-  it.each(["/", "/login", "/signup", "/forgot-password", "/auth/confirm", "/auth/error", "/invite/abc"])(
+  it.each(["/sobre", "/login", "/signup", "/forgot-password", "/auth/confirm", "/auth/error", "/invite/abc"])(
     "%s is public",
     (path) => expect(isPublicPath(path)).toBe(true),
   );
