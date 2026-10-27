@@ -118,6 +118,7 @@ select vault.create_secret('<CRON_SECRET>', 'reminders_secret');
 | `npm test` | Unit tests and RLS boundary tests (PGlite runs the real migrations in-process) |
 | `npm run test:e2e` | Playwright against a production build: public pages, guest redirects, validation, theme (mobile + desktop) |
 | `E2E_SUPABASE=1 E2E_SUPABASE_URL=… E2E_SUPABASE_KEY=… npm run test:e2e -- e2e/flows.spec.ts --project=desktop` | Full trainer/student journeys. Runs against the **test** project `fitflow-pro-test` (ref `txrwrpkyuwddzbzqfskv`, São Paulo; migrations applied with `supabase db push --db-url <its pooler URL>` so the CLI stays linked to production). The config refuses the production project |
+| `npx firebase-tools@14 emulators:start --only auth --project demo-fitflow --config e2e/firebase.json`, then the line above with `E2E_FIREBASE=1 E2E_SUPABASE_SECRET_KEY=<test project secret key>` | The same journeys through Firebase login, on the local Auth emulator (no Firebase account needed), plus a Firebase-only journey (password change, reset e-mail, no browser session). CI runs it when the `E2E_SUPABASE_SECRET_KEY` secret is set |
 
 The PGlite tests verify policies and grants but do not replace testing against a Supabase project.
 
