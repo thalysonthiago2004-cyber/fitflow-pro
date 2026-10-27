@@ -36,7 +36,7 @@ export function CustomizationForm({ exercise }: { exercise: Exercise }) {
         type="url"
         inputMode="url"
         placeholder="https://www.youtube.com/watch?v=…"
-        hint="YouTube e Vimeo aparecem embutidos. Um vídeo enviado tem prioridade sobre o link."
+        hint="YouTube, Vimeo, TikTok ou Instagram. YouTube e Vimeo aparecem embutidos. Um vídeo enviado tem prioridade sobre o link."
         defaultValue={v?.videoUrl ?? exercise.videoUrl ?? ""}
         errors={state.fieldErrors?.videoUrl}
       />

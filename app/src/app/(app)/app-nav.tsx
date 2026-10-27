@@ -1,6 +1,6 @@
 "use client";
 
-import { Apple, ClipboardList, Droplets, Dumbbell, HeartPulse, Scale, TrendingUp, Utensils, LayoutDashboard, Settings, Users, type LucideIcon } from "lucide-react";
+import { Apple, ClipboardList, Droplets, Dumbbell, HeartPulse, Scale, Sparkles, TrendingUp, Utensils, LayoutDashboard, Settings, Users, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { WorkspaceRole } from "@/lib/supabase/database.types";
@@ -18,6 +18,7 @@ const ICONS: Record<NavKey, LucideIcon> = {
   progress: TrendingUp,
   assessments: Scale,
   anamnese: HeartPulse,
+  assistant: Sparkles,
   nutrition: Utensils,
   foods: Apple,
   meals: Utensils,

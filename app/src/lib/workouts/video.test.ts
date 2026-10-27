@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toEmbedUrl } from "./video";
+import { toEmbedUrl, videoSource } from "./video";
 
 describe("toEmbedUrl", () => {
   it.each([
@@ -24,4 +24,16 @@ describe("toEmbedUrl", () => {
   ])("rejects %s", (input) => {
     expect(toEmbedUrl(input)).toBeNull();
   });
+});
+
+describe("videoSource", () => {
+  it.each([
+    ["https://youtu.be/dQw4w9WgXcQ", "youtube"],
+    ["https://vimeo.com/123456789", "vimeo"],
+    ["https://www.tiktok.com/@personal/video/7300000000000000000", "tiktok"],
+    ["https://vm.tiktok.com/ZMabc123/", "tiktok"],
+    ["https://www.instagram.com/reel/Cabc123/", "instagram"],
+    ["https://tiktok.com.evil.example/video/1", "link"],
+    ["not a url", "link"],
+  ])("%s → %s", (url, source) => expect(videoSource(url)).toBe(source));
 });

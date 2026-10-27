@@ -15,6 +15,8 @@ const LIMITS = {
   taco_import: { max: 20, windowSeconds: 3600 },
   questionnaire: { max: 10, windowSeconds: 3600 },
   duplicate_plan: { max: 30, windowSeconds: 3600 },
+  // Each question is a paid model call: 30 per day (UTC day).
+  assistant: { max: 30, windowSeconds: 86400 },
 } as const;
 
 export type LimitedAction = keyof typeof LIMITS;
@@ -25,10 +27,10 @@ type Client = Awaited<ReturnType<typeof createClient>>;
 /**
  * Counts one attempt and says whether it is allowed. If the check itself
  * fails, the action proceeds (the error is logged by the client): a database
- * hiccup should not lock people out.
+ * hiccup should not lock people out. Paid actions pass `failClosed` instead.
  */
-export async function allow(supabase: Client, action: LimitedAction): Promise<boolean> {
+export async function allow(supabase: Client, action: LimitedAction, { failClosed = false } = {}): Promise<boolean> {
   const { max, windowSeconds } = LIMITS[action];
   const { data, error } = await supabase.rpc("check_rate_limit", { p_action: action, p_max: max, p_window_seconds: windowSeconds });
-  return error ? true : data !== false;
+  return error ? !failClosed : data !== false;
 }

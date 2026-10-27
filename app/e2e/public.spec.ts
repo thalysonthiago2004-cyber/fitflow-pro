@@ -29,7 +29,7 @@ test("the product page links to sign-up and login", async ({ page }) => {
 });
 
 test.describe("guest redirects", () => {
-  for (const path of ["/dashboard", "/settings", "/reset-password", "/students", "/students/invite", "/assessments", "/anamnese", "/foods/taco", "/workouts", "/workouts/new", "/exercises", "/training", "/training/history", "/hydration", "/nutrition", "/foods", "/meals", "/progress"]) {
+  for (const path of ["/dashboard", "/settings", "/reset-password", "/students", "/students/invite", "/assessments", "/anamnese", "/foods/taco", "/workouts", "/workouts/new", "/exercises", "/training", "/training/history", "/hydration", "/nutrition", "/foods", "/meals", "/progress", "/assistant"]) {
     test(`${path} redirects to login and keeps the destination`, async ({ page }) => {
       await page.goto(path);
       await expect(page).toHaveURL(`/login?next=${encodeURIComponent(path)}`);

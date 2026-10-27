@@ -36,6 +36,10 @@ export default function PrivacyPage() {
           (guardada de forma cifrada) para confirmar seu acesso e enviar os e-mails de confirmação e de redefinição de senha; ele pode tratar
           esses dados em servidores fora do Brasil, com as garantias previstas na LGPD. Quando ativado, o Sentry recebe relatórios técnicos
           de erros, sem dados de saúde.
+          O assistente de IA usa a Anthropic (Claude): quando você faz uma pergunta, ela recebe a conversa, seu primeiro nome e, se a
+          pergunta depender disso, seu plano de treino ou os nomes dos exercícios da biblioteca. Medidas, fotos, anamnese e dieta não são
+          enviados. O FitFlow não guarda as conversas (elas ficam só na aba do seu navegador); a Anthropic trata os dados nos Estados Unidos,
+          não os usa para treinar modelos e os mantém apenas pelo prazo previsto nos termos comerciais dela.
           Eles só tratam os dados para prestar esse serviço.
         </li>
         <li>Não vendemos dados pessoais.</li>

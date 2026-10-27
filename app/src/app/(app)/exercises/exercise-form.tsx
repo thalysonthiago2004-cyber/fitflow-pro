@@ -57,7 +57,7 @@ export function ExerciseForm({ action, exercise, submitLabel }: Props) {
         type="url"
         inputMode="url"
         placeholder="https://www.youtube.com/watch?v=…"
-        hint="Links do YouTube e do Vimeo aparecem embutidos na página."
+        hint="YouTube, Vimeo, TikTok ou Instagram. YouTube e Vimeo aparecem embutidos; os outros abrem no app da rede."
         defaultValue={v?.videoUrl ?? exercise?.videoUrl ?? ""}
         errors={state.fieldErrors?.videoUrl}
       />

@@ -30,3 +30,20 @@ export function toEmbedUrl(raw: string | null | undefined): string | null {
   }
   return null;
 }
+
+export type VideoSource = "youtube" | "vimeo" | "tiktok" | "instagram" | "link";
+
+/** Where a demonstration link points, for labels ("Ver no TikTok"). */
+export function videoSource(raw: string): VideoSource {
+  let host: string;
+  try {
+    host = new URL(raw).hostname.replace(/^(www|m|vm)\./, "");
+  } catch {
+    return "link";
+  }
+  if (host === "youtu.be" || host === "youtube.com" || host === "youtube-nocookie.com") return "youtube";
+  if (host === "vimeo.com" || host === "player.vimeo.com") return "vimeo";
+  if (host === "tiktok.com" || host.endsWith(".tiktok.com")) return "tiktok";
+  if (host === "instagram.com" || host === "instagr.am") return "instagram";
+  return "link";
+}

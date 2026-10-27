@@ -190,6 +190,25 @@ async function withVideoUrls<T extends Pick<Exercise, "videoPath" | "videoSrc">>
 
 
 
+const normalize = (text: string) => text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+
+/**
+ * Exercises the caller can see (RLS) that have a demonstration video, best
+ * name matches first. Every word of the query must appear in the name; if
+ * nothing matches that strictly, any word will do.
+ */
+export async function findExercisesWithVideo(query: string, limit = 5): Promise<Exercise[]> {
+  const words = normalize(query).split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
+  if (words.length === 0) return [];
+  const withVideo = (await listExercises()).filter((e) => e.videoUrl || e.videoPath);
+  const named = withVideo.map((e) => ({ e, name: normalize(e.name) }));
+  let matches = named.filter(({ name }) => words.every((w) => name.includes(w)));
+  if (matches.length === 0) matches = named.filter(({ name }) => words.some((w) => name.includes(w)));
+  // Shorter names first: "Agachamento livre" before "Agachamento livre com pausa".
+  matches.sort((a, b) => a.name.length - b.name.length);
+  return withVideoUrls(matches.slice(0, limit).map(({ e }) => e));
+}
+
 export async function listExercises(): Promise<Exercise[]> {
   const supabase = await createClient();
   const { data, error } = await supabase

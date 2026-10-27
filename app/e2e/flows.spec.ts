@@ -729,6 +729,15 @@ test("@supabase a meal plan is duplicated with its meals and foods", async ({ pa
   await expect.poll(() => page.getByRole("heading", { level: 3 }).filter({ visible: true }).allTextContents()).toEqual(meals);
 });
 
+test("@supabase the assistant is reachable from the menu", async ({ page }) => {
+  await login(page, trainer.email, trainer.password);
+  await page.getByRole("navigation", { name: "Navegação principal" }).getByRole("link", { name: "Assistente" }).click();
+  await expect(page).toHaveURL(/\/assistant$/);
+  await expect(page.getByRole("heading", { name: "Assistente", level: 1 })).toBeVisible();
+  // Test runs have no Anthropic key: the page says so instead of failing.
+  if (!process.env.ANTHROPIC_API_KEY) await expect(page.getByText("Assistente ainda não ativado")).toBeVisible();
+});
+
 test("@supabase students reach their trainer on WhatsApp", async ({ browser, page }) => {
   await login(page, trainer.email, trainer.password);
   await page.goto("/settings");

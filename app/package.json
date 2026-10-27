@@ -16,6 +16,7 @@
     "local:app": "node scripts/local-backend/app.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
     "@base-ui/react": "^1.9.0",
     "@firebase/app": "^0.16.2",
     "@firebase/auth": "^1.13.6",

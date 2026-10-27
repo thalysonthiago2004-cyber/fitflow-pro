@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Sparkles } from "lucide-react";
 import { Suspense } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -66,6 +67,13 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
             <span className="sr-only">Ir para o painel</span>
           </Link>
           <div className="flex items-center gap-1">
+            <Link
+              href="/assistant"
+              className="flex size-11 items-center justify-center rounded-full text-foreground outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              <Sparkles className="size-5" aria-hidden />
+              <span className="sr-only">Assistente</span>
+            </Link>
             <ThemeToggle />
             <Suspense fallback={<div className="size-11 animate-pulse rounded-full bg-muted" />}>
               <CurrentUserMenu compact />
