@@ -1,6 +1,6 @@
 import { type FirebaseApp, getApps, initializeApp } from "@firebase/app";
-import { type Auth, getAuth, inMemoryPersistence, initializeAuth } from "@firebase/auth";
-import { firebaseConfig } from "./config";
+import { type Auth, connectAuthEmulator, getAuth, inMemoryPersistence, initializeAuth } from "@firebase/auth";
+import { firebaseConfig, firebaseEmulatorHost } from "./config";
 
 // Browser-only. Firebase keeps nothing in localStorage/IndexedDB (in-memory
 // persistence): it is used just to prove the password and send e-mails. The
@@ -13,6 +13,7 @@ export function firebaseAuth(): Auth {
   const app: FirebaseApp = getApps()[0] ?? initializeApp(firebaseConfig);
   try {
     auth = initializeAuth(app, { persistence: inMemoryPersistence });
+    if (firebaseEmulatorHost) connectAuthEmulator(auth, `http://${firebaseEmulatorHost}`, { disableWarnings: true });
   } catch {
     auth = getAuth(app);
   }

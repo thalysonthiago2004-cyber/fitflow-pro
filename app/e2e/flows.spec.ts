@@ -666,7 +666,8 @@ test("@supabase TACO foods import into the library with their source", async ({ 
   await page.getByLabel(/Arroz, integral, cozido/).check();
   await page.getByRole("button", { name: "Importar selecionados" }).click();
   await expect(page.getByText("1 alimento importado.").filter({ visible: true })).toBeVisible();
-  await expect(page.getByText("Na biblioteca").first()).toBeVisible();
+  // The badge shows once the list refreshes after the import.
+  await expect(page.getByText("Na biblioteca").first()).toBeVisible({ timeout: 15_000 });
   await page.goto("/foods");
   await expect(page.getByText("Arroz, integral, cozido").first()).toBeVisible();
 });
@@ -769,12 +770,57 @@ test("@supabase sets marked offline are kept on the phone and sent when back onl
   await studentPage.context().close();
 });
 
+test("@supabase Firebase login: password change, reset e-mail, nothing stored in the browser", async ({ page }) => {
+  test.skip(!process.env.E2E_FIREBASE, "Firebase login only");
+  await login(page, trainer.email, trainer.password);
+  // Firebase keeps no session of its own in the browser (no auth user in
+  // localStorage or its IndexedDB store): the app session is the httpOnly cookie.
+  const stored = await page.evaluate(async () => ({
+    local: Object.keys(localStorage).filter((k) => k.startsWith("firebase:")),
+    idb: ((await indexedDB.databases?.()) ?? []).map((d) => d.name).filter((n) => n === "firebaseLocalStorageDb"),
+  }));
+  expect(stored).toEqual({ local: [], idb: [] });
+
+  await page.goto("/reset-password");
+  await page.getByLabel("Senha atual").fill("senha-errada1");
+  await page.getByLabel("Nova senha", { exact: true }).fill("novaSenha2026");
+  await page.getByLabel("Confirmar nova senha").fill("novaSenha2026");
+  await page.getByRole("button", { name: "Salvar nova senha" }).click();
+  await expect(page.getByText("Senha atual incorreta.").filter({ visible: true })).toBeVisible();
+  await page.getByLabel("Senha atual").fill(trainer.password);
+  await page.getByLabel("Nova senha", { exact: true }).fill("novaSenha2026");
+  await page.getByLabel("Confirmar nova senha").fill("novaSenha2026");
+  await page.getByRole("button", { name: "Salvar nova senha" }).click();
+  await expect(page.getByText("Senha atual incorreta.").filter({ visible: true })).toHaveCount(0);
+  await expect(page.getByText("Senha atualizada com sucesso.").filter({ visible: true })).toBeVisible();
+  const oldPassword = trainer.password;
+  trainer.password = "novaSenha2026";
+
+  const guest = await page.context().browser()!.newPage();
+  await guest.goto("/login");
+  await guest.getByLabel("E-mail").fill(trainer.email);
+  await guest.getByLabel("Senha", { exact: true }).fill(oldPassword);
+  await guest.getByRole("button", { name: "Entrar" }).click();
+  await expect(guest.getByText("E-mail ou senha incorretos.").filter({ visible: true })).toBeVisible();
+  // Same answer for an account that exists and one that does not.
+  for (const email of [trainer.email, `ninguem.${run}@example.com`]) {
+    await guest.goto("/forgot-password");
+    await guest.getByLabel("E-mail").fill(email);
+    await guest.getByRole("button", { name: "Enviar link" }).click();
+    await expect(guest.getByText("Se houver uma conta com este e-mail, você receberá um link para redefinir a senha.")).toBeVisible();
+  }
+  await login(guest, trainer.email, trainer.password);
+  await guest.close();
+});
+
 test("@supabase a student deletes their account", async ({ browser, page }) => {
   const studentPage = await newPage(browser, "mobile");
   await login(studentPage, student.email, student.password);
   await studentPage.goto("/settings");
   await studentPage.getByRole("button", { name: "Excluir minha conta" }).click();
   await studentPage.getByLabel("Digite EXCLUIR para confirmar").fill("EXCLUIR");
+  // With Firebase login the password is checked again before deleting.
+  if (process.env.E2E_FIREBASE) await studentPage.getByLabel("Sua senha").fill(student.password);
   await studentPage.getByRole("alertdialog").getByRole("button", { name: "Excluir conta" }).click();
   await expect(studentPage).toHaveURL(/\/login\?conta=excluida$/);
   await expect(studentPage.getByText("Sua conta e seus dados foram excluídos.")).toBeVisible();

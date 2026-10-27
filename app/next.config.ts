@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { firebaseEmulatorHost } from "./src/lib/firebase/config";
 
 const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).host : "";
 const dev = process.env.NODE_ENV === "development";
@@ -13,7 +14,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: https://${supabase}`,
   `media-src 'self' blob: https://${supabase}`,
-  `connect-src 'self' https://${supabase} wss://${supabase} https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com`,
+  `connect-src 'self' https://${supabase} wss://${supabase} https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com${firebaseEmulatorHost ? ` http://${firebaseEmulatorHost}` : ""}`,
   "frame-src https://www.youtube-nocookie.com https://player.vimeo.com",
   "worker-src 'self'",
   "manifest-src 'self'",
