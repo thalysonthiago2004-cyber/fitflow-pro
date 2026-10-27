@@ -12,7 +12,7 @@ import {
 } from "@firebase/auth";
 import { firebaseCancelLegacy, firebaseLegacySignIn, firebaseLinkLegacy, firebaseSignIn, type FirebaseAuthResult } from "@/app/(auth)/firebase-actions";
 import { continueUrl, firebaseAuth } from "./client";
-import { firebaseErrorCode, firebaseErrorMessage } from "./errors";
+import { firebaseErrorCode, firebaseErrorMessage, isCredentialError } from "./errors";
 
 // Browser flows for Firebase Authentication. Firebase checks the password and
 // sends the e-mails; the server actions verify the ID token and open the
@@ -28,7 +28,7 @@ export async function signInFlow(email: string, password: string, next: string):
     const { user } = await signInWithEmailAndPassword(auth, email, password);
     return await firebaseSignIn(await user.getIdToken(), next);
   } catch (error) {
-    if (firebaseErrorCode(error) !== "auth/invalid-credential") return fail(error);
+    if (!isCredentialError(error)) return fail(error);
     return migrateLegacyAccount(email, password, next, error);
   }
 }
@@ -121,8 +121,7 @@ export async function changePasswordFlow(email: string, currentPassword: string,
   try {
     user = await reauthenticate(email, currentPassword);
   } catch (error) {
-    const code = firebaseErrorCode(error);
-    if (code === "auth/invalid-credential") return { ok: false, field: "currentPassword", message: "Senha atual incorreta." };
+    if (isCredentialError(error)) return { ok: false, field: "currentPassword", message: "Senha atual incorreta." };
     return { ok: false, message: firebaseErrorMessage(error) };
   }
   try {
@@ -145,8 +144,7 @@ export async function deleteAccountFlow(email: string, password: string, deleteD
   try {
     user = await reauthenticate(email, password);
   } catch (error) {
-    const code = firebaseErrorCode(error);
-    return { ok: false as const, message: code === "auth/invalid-credential" ? "Senha incorreta." : firebaseErrorMessage(error) };
+    return { ok: false as const, message: isCredentialError(error) ? "Senha incorreta." : firebaseErrorMessage(error) };
   }
   const result = await deleteData();
   if (!result.ok) {

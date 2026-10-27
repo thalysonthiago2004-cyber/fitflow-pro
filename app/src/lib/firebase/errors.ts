@@ -24,3 +24,12 @@ export function firebaseErrorCode(error: unknown): string {
 export function firebaseErrorMessage(error: unknown): string {
   return MESSAGES[firebaseErrorCode(error)] ?? FIREBASE_GENERIC;
 }
+
+/**
+ * Wrong e-mail or password. With e-mail enumeration protection on (the
+ * default) Firebase answers auth/invalid-credential; without it, or on the
+ * emulator, auth/wrong-password or auth/user-not-found.
+ */
+export function isCredentialError(error: unknown): boolean {
+  return ["auth/invalid-credential", "auth/wrong-password", "auth/user-not-found"].includes(firebaseErrorCode(error));
+}
