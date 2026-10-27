@@ -573,6 +573,46 @@ test("@supabase bi-set with per-set reps and the trainer's own video", async ({ 
   await studentPage.context().close();
 });
 
+// Real model calls (paid): only with E2E_ASSISTANT=1 and an ANTHROPIC_API_KEY.
+test("@supabase the assistant answers and shows the trainer's videos", async ({ browser, page }) => {
+  test.skip(!process.env.E2E_ASSISTANT || !process.env.ANTHROPIC_API_KEY, "real assistant calls are opt-in");
+  test.setTimeout(240_000);
+  const ask = async (p: Page, question: string) => {
+    await p.getByLabel("Sua pergunta").fill(question);
+    await p.getByRole("button", { name: "Enviar" }).click();
+    await expect(p.getByRole("button", { name: "Enviar" })).toBeDisabled();
+    await expect(p.getByRole("log")).toHaveAttribute("aria-busy", "false", { timeout: 90_000 });
+    await expect(p.getByRole("log").getByText(/indisponível|Não posso ajudar|limite/)).toHaveCount(0);
+  };
+
+  await login(page, trainer.email, trainer.password);
+  // A TikTok link on another catalog exercise, as the trainer's own version.
+  await page.goto("/exercises");
+  await page.getByRole("link", { name: /Rosca martelo/ }).first().click();
+  await page.getByLabel("Link do vídeo (opcional)").fill("https://www.tiktok.com/@fitflowpro/video/7300000000000000000");
+  await page.getByRole("button", { name: "Salvar para meus alunos" }).click();
+  await expect(page.getByText("Personalização salva. Seus alunos já veem esta versão.").filter({ visible: true })).toBeVisible();
+
+  await page.goto("/assistant");
+  await ask(page, "Como eu convido um aluno?");
+  await expect(page.getByRole("log").getByText(/Alunos/).first()).toBeVisible();
+
+  const studentPage = await newPage(browser, "mobile");
+  await login(studentPage, student.email, student.password);
+  await studentPage.getByRole("link", { name: "Assistente" }).click();
+  await ask(studentPage, "Me mostra o vídeo do tríceps francês");
+  const videos = studentPage.getByRole("list", { name: "Vídeos encontrados" }).last();
+  await expect(videos.getByText("Tríceps francês com halter")).toBeVisible();
+  await expect(videos.locator("video")).toHaveAttribute("src", /\/storage\/v1\/object\/sign\/exercise-videos\//);
+
+  await ask(studentPage, "E o vídeo da rosca martelo?");
+  const tiktok = studentPage.getByRole("list", { name: "Vídeos encontrados" }).last().getByRole("link", { name: /Ver no TikTok/ });
+  await expect(tiktok).toHaveAttribute("href", "https://www.tiktok.com/@fitflowpro/video/7300000000000000000");
+  // No link appears in the answer text itself: videos only come as cards.
+  await expect(studentPage.getByRole("log").locator("div.whitespace-pre-line", { hasText: "https://" })).toHaveCount(0);
+  await studentPage.context().close();
+});
+
 test("@supabase anamnesis flags medical clearance for the trainer", async ({ browser, page }) => {
   const studentPage = await newPage(browser, "mobile");
   await login(studentPage, student.email, student.password);
