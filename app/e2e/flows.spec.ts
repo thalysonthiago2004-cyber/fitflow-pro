@@ -171,21 +171,30 @@ test("@supabase student records a workout and the trainer sees it", async ({ bro
   await expect(studentPage.getByRole("status").filter({ hasText: "Descanso" })).toBeVisible();
   await studentPage.getByRole("button", { name: "Pular" }).click();
 
+  // Focus mode: no tab bar, and the bottom bar completes the next set.
+  await expect(studentPage.getByRole("navigation", { name: "Navegação principal" }).filter({ visible: true })).toHaveCount(0);
+  await studentPage.getByLabel("Repetições — Agachamento livre, série 2").fill("9");
+  await studentPage.getByRole("button", { name: "Concluir próxima série: Agachamento livre, série 2" }).click();
+  // The finished exercise folds away; it can be reopened.
+  await expect(studentPage.getByRole("button", { name: /Rever Agachamento livre/ })).toBeVisible();
+  await studentPage.getByRole("button", { name: "Pular" }).click();
+  await expect(studentPage.getByRole("button", { name: "Desmarcar Agachamento livre, série 2" })).toBeHidden();
+
   await studentPage.getByLabel("Repetições — Supino reto com barra, série 1").fill("8");
   await studentPage.getByLabel("Carga em kg — Supino reto com barra, série 1").fill("42,5");
   await studentPage.getByRole("button", { name: "Concluir Supino reto com barra, série 1" }).click();
-  await expect(studentPage.getByText("2 de 4 séries", { exact: true }).filter({ visible: true })).toBeVisible();
+  await expect(studentPage.getByText("3 de 4 séries", { exact: true }).filter({ visible: true })).toBeVisible();
   // The toggle is disabled while its save is in flight.
   await expect(studentPage.getByRole("button", { name: "Desmarcar Supino reto com barra, série 1" })).toBeEnabled();
 
   // Progress survives a reload: sets are saved as they are completed.
   await studentPage.reload();
-  await expect(studentPage.getByText("2 de 4 séries", { exact: true }).filter({ visible: true })).toBeVisible();
+  await expect(studentPage.getByText("3 de 4 séries", { exact: true }).filter({ visible: true })).toBeVisible();
 
   await studentPage.getByLabel("Como foi o treino? (opcional)").fill("Boa sessão.");
   await studentPage.getByRole("button", { name: "Concluir treino" }).click();
   await expect(studentPage.getByText("Concluído em").filter({ visible: true })).toBeVisible();
-  await expect(studentPage.getByText("2 de 4", { exact: true }).filter({ visible: true })).toBeVisible();
+  await expect(studentPage.getByText("3 de 4", { exact: true }).filter({ visible: true })).toBeVisible();
 
   // The home screen marks today as trained in the week strip.
   await studentPage.goto("/dashboard");
@@ -205,7 +214,8 @@ test("@supabase student records a workout and the trainer sees it", async ({ bro
 test("@supabase a plan with recorded workouts cannot be deleted", async ({ page }) => {
   await login(page, trainer.email, trainer.password);
   await page.goto(planUrl);
-  await page.getByRole("button", { name: "Excluir plano" }).click();
+  await page.getByRole("button", { name: "Mais ações do plano" }).click();
+  await page.getByRole("menuitem", { name: "Excluir plano" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Excluir" }).click();
   await expect(page.getByText(/arquive o plano em vez de excluir/).filter({ visible: true })).toBeVisible();
 });
@@ -297,7 +307,7 @@ test("@supabase trainer builds a meal plan and the student sees estimates", asyn
 test("@supabase measurements, personal records and honest estimates", async ({ browser, page }) => {
   const studentPage = await newPage(browser, "mobile");
   await login(studentPage, student.email, student.password);
-  await studentPage.goto("/progress");
+  await studentPage.goto("/progress?aba=medidas");
   await studentPage.getByLabel("Data da medição").fill("2026-10-01");
   await studentPage.getByLabel("Peso (kg)").fill("72,4");
   await studentPage.getByRole("button", { name: "Registrar medição" }).click();
@@ -310,7 +320,8 @@ test("@supabase measurements, personal records and honest estimates", async ({ b
   await studentPage.getByRole("button", { name: "Registrar medição" }).click();
   await expect(studentPage.getByText("A data não pode ser no futuro.").filter({ visible: true })).toBeVisible();
 
-  // The trainer's own recent workout set is the record.
+  // The trainer's own recent workout set is the record (on the summary tab).
+  await studentPage.getByRole("navigation", { name: "Seções da evolução" }).getByRole("link", { name: "Resumo" }).click();
   await expect(studentPage.getByText(/Supino reto com barra/).filter({ visible: true })).toBeVisible();
   await expect(studentPage.getByText(/42,5 kg × 8/).filter({ visible: true })).toBeVisible();
 
@@ -324,6 +335,7 @@ test("@supabase measurements, personal records and honest estimates", async ({ b
   await page.goto("/students");
   await page.getByRole("link", { name: student.name }).first().click();
   await page.getByRole("link", { name: "Evolução" }).click();
+  await page.getByRole("navigation", { name: "Seções da evolução" }).getByRole("link", { name: "Medidas" }).click();
   await page.getByLabel("Peso (kg)").fill("71,8");
   await page.getByLabel("Cintura (cm)").fill("78");
   await page.getByRole("button", { name: "Registrar medição" }).click();
@@ -382,7 +394,7 @@ test("@supabase quick body assessment uses the student record and tape measures"
 
   const studentPage = await newPage(browser, "mobile");
   await login(studentPage, student.email, student.password);
-  await studentPage.goto("/progress");
+  await studentPage.goto("/progress?aba=medidas");
   const assessment = studentPage.locator("[data-slot=card]").filter({ has: studentPage.getByRole("heading", { name: "Avaliação corporal rápida" }) });
   await expect(assessment.getByText(/registre pescoço, cintura e quadril/)).toBeVisible();
 
@@ -408,7 +420,7 @@ test("@supabase quick body assessment uses the student record and tape measures"
 test("@supabase before and after photos are private to the student and trainer", async ({ browser, page }) => {
   const studentPage = await newPage(browser, "mobile");
   await login(studentPage, student.email, student.password);
-  await studentPage.goto("/progress");
+  await studentPage.goto("/progress?aba=fotos");
   await studentPage.getByLabel("Data da foto").fill("2026-09-01");
   await studentPage.getByLabel("Foto de evolução").setInputFiles(await jpeg(studentPage, "#2b2f2c"));
   await expect(studentPage.getByText("Foto adicionada.").filter({ visible: true })).toBeVisible();
@@ -426,6 +438,7 @@ test("@supabase before and after photos are private to the student and trainer",
   await page.goto("/students");
   await page.getByRole("link", { name: student.name }).first().click();
   await page.getByRole("link", { name: "Evolução" }).click();
+  await page.getByRole("navigation", { name: "Seções da evolução" }).getByRole("link", { name: "Fotos" }).click();
   await expect(page.getByRole("img", { name: /^Depois: frente em 01\/10\/2026$/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Adicionar foto" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Excluir foto/ })).toHaveCount(0);
@@ -468,11 +481,14 @@ test("@supabase trainer prescribes cardio and the student records it", async ({ 
   await studentPage.getByLabel("Duração em minutos — Esteira").fill("22");
   await studentPage.getByLabel("Esforço percebido de 1 a 10 — Esteira").selectOption("6");
   await studentPage.getByRole("button", { name: "Concluir cardio — Esteira" }).click();
+  // The logged cardio folds away; reopening it shows what was saved.
+  await studentPage.getByRole("button", { name: /Rever Esteira/ }).click();
   await expect(studentPage.getByRole("button", { name: "Cardio concluído — Esteira" })).toBeEnabled();
   await expect(studentPage.getByText("1 de 6 etapas", { exact: true }).filter({ visible: true })).toBeVisible();
 
   await studentPage.reload();
   await expect(studentPage.getByText("1 de 6 etapas", { exact: true }).filter({ visible: true })).toBeVisible();
+  await studentPage.getByRole("button", { name: /Rever Esteira/ }).click();
   await expect(studentPage.getByLabel("Duração em minutos — Esteira")).toHaveValue("22");
   await studentPage.getByRole("button", { name: "Concluir treino" }).click();
   await expect(studentPage.getByText("Concluído em").filter({ visible: true })).toBeVisible();
@@ -515,6 +531,8 @@ async function webm(page: Page): Promise<{ name: string; mimeType: string; buffe
 }
 
 test("@supabase bi-set with per-set reps and the trainer's own video", async ({ browser, page }) => {
+  // The longest journey (video upload and recording): room for a slow machine.
+  test.setTimeout(60_000);
   await login(page, trainer.email, trainer.password);
 
   // The trainer's version of a catalog exercise: own instructions and an uploaded video.
@@ -646,9 +664,11 @@ test("@supabase anamnesis flags medical clearance for the trainer", async ({ bro
 test("@supabase templates: save a plan as a template and reuse it", async ({ page }) => {
   await login(page, trainer.email, trainer.password);
   await page.goto(planUrl);
-  await page.getByLabel("Destino").selectOption({ label: "Salvar como modelo" });
-  await page.getByLabel("Nome da cópia").fill("Modelo hipertrofia");
-  await page.getByRole("button", { name: "Duplicar plano" }).click();
+  await page.getByRole("button", { name: "Duplicar", exact: true }).click();
+  const copy = page.getByRole("dialog");
+  await copy.getByLabel("Destino").selectOption({ label: "Salvar como modelo" });
+  await copy.getByLabel("Nome da cópia").fill("Modelo hipertrofia");
+  await copy.getByRole("button", { name: "Duplicar plano" }).click();
   await expect(page.getByRole("heading", { name: "Modelo hipertrofia" })).toBeVisible();
   await expect(page.getByText("Modelo", { exact: true }).filter({ visible: true }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Publicar para o aluno" })).toHaveCount(0);
@@ -657,9 +677,11 @@ test("@supabase templates: save a plan as a template and reuse it", async ({ pag
 
   await page.goto("/workouts?status=templates");
   await page.getByRole("link", { name: /Modelo hipertrofia/ }).click();
-  await page.getByLabel("Destino").selectOption({ label: `Para ${student.name}` });
-  await page.getByLabel("Nome da cópia").fill("Hipertrofia — fase 2");
-  await page.getByRole("button", { name: "Criar plano a partir do modelo" }).click();
+  await page.getByRole("button", { name: "Usar modelo" }).click();
+  const use = page.getByRole("dialog");
+  await use.getByLabel("Destino").selectOption({ label: `Para ${student.name}` });
+  await use.getByLabel("Nome da cópia").fill("Hipertrofia — fase 2");
+  await use.getByRole("button", { name: "Criar plano a partir do modelo" }).click();
   await expect(page.getByRole("heading", { name: "Hipertrofia — fase 2" })).toBeVisible();
   await expect(page.getByText("Este plano é um rascunho")).toBeVisible();
 });

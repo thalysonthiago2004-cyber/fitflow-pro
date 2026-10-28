@@ -3,13 +3,13 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BackLink } from "@/components/back-link";
 import { PageHeader } from "@/components/page-header";
-import { ProgressView } from "@/components/progress/progress-view";
+import { ProgressView, parseProgressTab } from "@/components/progress/progress-view";
 import { requireStaff } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/queries";
 
 export const metadata: Metadata = { title: "Evolução do aluno" };
 
-async function Content({ params }: Pick<PageProps<"/students/[studentId]/progress">, "params">) {
+async function Content({ params, searchParams }: Pick<PageProps<"/students/[studentId]/progress">, "params" | "searchParams">) {
   const { studentId } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(studentId)) notFound();
   const user = await requireStaff();
@@ -18,17 +18,17 @@ async function Content({ params }: Pick<PageProps<"/students/[studentId]/progres
   return (
     <div className="grid gap-8">
       <PageHeader title={`Evolução — ${student.fullName}`} description="Medidas registradas pelo aluno ou por você, recordes calculados a partir dos treinos." />
-      <ProgressView studentId={studentId} viewerId={user.id} />
+      <ProgressView studentId={studentId} viewerId={user.id} tab={parseProgressTab((await searchParams).aba)} basePath={`/students/${studentId}/progress`} />
     </div>
   );
 }
 
-export default function StudentProgressPage({ params }: PageProps<"/students/[studentId]/progress">) {
+export default function StudentProgressPage({ params, searchParams }: PageProps<"/students/[studentId]/progress">) {
   return (
     <div className="grid max-w-4xl gap-6">
       <BackLink href="/students">Alunos</BackLink>
       <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-2xl bg-muted" aria-label="Carregando evolução" />}>
-        <Content params={params} />
+        <Content params={params} searchParams={searchParams} />
       </Suspense>
     </div>
   );

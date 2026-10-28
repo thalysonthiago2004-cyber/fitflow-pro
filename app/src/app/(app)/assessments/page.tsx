@@ -41,7 +41,7 @@ async function Content() {
         return (
           <li key={student.userId}>
             <Link
-              href={`/students/${student.userId}/progress#avaliacao`}
+              href={`/students/${student.userId}/progress?aba=medidas#avaliacao`}
               className="flex items-center gap-3 surface-row p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
             >
               <div className="grid min-w-0 flex-1 gap-1">

@@ -16,6 +16,7 @@ import { type LastPerformance, suggestLoad, workingLoad } from "@/lib/workouts/p
 import type { LogDetail, Prescription, StrengthPrescription } from "@/lib/workouts/queries";
 import { type QueuedOp, dropOp, enqueue, flushQueue, isNetworkError, readQueue } from "@/lib/offline/queue";
 import { cn } from "@/lib/utils";
+import { type Step, nextStep } from "@/lib/workouts/next-step";
 import { discardWorkout, finishWorkout, saveCardio, saveSet } from "../../actions";
 import { CardioBlock, type CardioSave, type CardioStatus } from "./cardio-block";
 
@@ -70,6 +71,17 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
   );
   // `run` restarts the timer when another rest of the same length begins.
   const [rest, setRest] = useState<{ total: number; run: number } | null>(null);
+  // Finished blocks fold away; the student can reopen one to review or fix it.
+  const [reopened, setReopened] = useState<Set<string>>(() => new Set());
+  const blockRefs = useRef<Record<string, HTMLLIElement | null>>({});
+
+  // Focus mode: the app's bottom tab bar steps aside while training.
+  useEffect(() => {
+    document.documentElement.dataset.focus = "workout";
+    return () => {
+      delete document.documentElement.dataset.focus;
+    };
+  }, []);
 
   // Each strength set and each cardio block is one step of the workout.
   const steps = [...Object.values(sets).flat(), ...Object.values(cardio)];
@@ -77,6 +89,30 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
   const planned = steps.length;
   const saving = steps.some((s) => s.saving);
   const unit = Object.keys(cardio).length > 0 ? "etapas" : "séries";
+
+  const blocks = groupSupersets(log.exercises);
+  const blockDone = (block: Prescription[]) => block.every((item) => (item.kind === "cardio" ? cardio[item.id]?.completed : sets[item.id].every((set) => set.completed)));
+  const currentIndex = blocks.findIndex((block) => !blockDone(block));
+  const next = nextStep(blocks, currentIndex, sets, cardio);
+
+  // When a block is finished, bring the next one into view.
+  const lastCurrent = useRef(currentIndex);
+  useEffect(() => {
+    if (currentIndex === lastCurrent.current) return;
+    const advanced = currentIndex > lastCurrent.current || currentIndex === -1;
+    lastCurrent.current = currentIndex;
+    if (!advanced || currentIndex === -1) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    blockRefs.current[blocks[currentIndex][0].id]?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  }, [currentIndex, blocks]);
+
+  const toggleReopen = (id: string) =>
+    setReopened((current) => {
+      const nextSet = new Set(current);
+      if (nextSet.has(id)) nextSet.delete(id);
+      else nextSet.add(id);
+      return nextSet;
+    });
 
   // Leaving mid-save would drop the set; ask the browser to confirm first.
   useEffect(() => {
@@ -195,8 +231,8 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
   }
 
   return (
-    <div className="grid gap-6 pb-24">
-      <div className="sticky top-16 z-20 -mx-4 border-b bg-background/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border lg:top-4">
+    <div className="grid gap-6">
+      <div className="sticky top-16 z-20 -mx-4 border-b bg-background/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border lg:top-[4.5rem]">
         <div className="flex items-center justify-between gap-3 text-sm">
           <span className="font-medium">Progresso</span>
           <span className="tabular-nums text-muted-foreground" aria-live="polite">{done} de {planned} {unit}</span>
@@ -227,16 +263,39 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
       )}
 
       <ol className="grid gap-4">
-        {groupSupersets(log.exercises).map((block) => {
+        {blocks.map((block, blockIndex) => {
+          const id = block[0].id;
+          const done = blockDone(block);
+          const folded = done && !reopened.has(id);
+          const current = blockIndex === currentIndex;
+          const shell = (content: React.ReactNode, superset = false) => (
+            <li
+              key={id}
+              ref={(el) => {
+                blockRefs.current[id] = el;
+              }}
+              className={cn(
+                "grid scroll-mt-36 gap-4 p-4 sm:p-5",
+                superset ? "rounded-2xl border-2 border-foreground/15 bg-card" : "surface",
+                current && "ring-2 ring-foreground/60 dark:ring-brand/50",
+                folded && "bg-muted/40",
+              )}
+            >
+              {done && <DoneHeader names={block.map((i) => i.exercise.name)} detail={doneDetail(block, sets)} open={!folded} onToggle={() => toggleReopen(id)} />}
+              {/* Kept mounted while folded, so typed values and cardio forms survive. */}
+              <div className={cn("grid gap-4", folded && "hidden")}>{content}</div>
+            </li>
+          );
           if (block.length === 1) {
             const item = block[0];
             const exerciseIndex = log.exercises.indexOf(item);
-            return (
-              <li key={item.id} className="grid gap-4 surface p-4 sm:p-5">
+            return shell(
+              <>
                 <div className="grid gap-1">
                   <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                     {item.kind === "cardio" && <HeartPulse className="size-3.5" aria-hidden />}
                     {item.kind === "cardio" ? "Cardio" : "Exercício"} {exerciseIndex + 1} de {log.exercises.length}
+                    {current && <NowPill />}
                   </p>
                   <h2 className="font-heading text-lg font-semibold">{item.exercise.name}</h2>
                   <p className="text-sm text-muted-foreground">{item.kind === "cardio" ? `Meta: ${formatPrescription(item)}` : targetLine(item, true)}</p>
@@ -270,7 +329,7 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
                     ))}
                   </div>
                 )}
-              </li>
+              </>,
             );
           }
 
@@ -278,12 +337,13 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
           const group = block as StrengthPrescription[];
           const rounds = Math.max(...group.map((i) => i.sets));
           const groupRest = group.at(-1)!.restSeconds;
-          return (
-            <li key={group[0].id} className="grid gap-4 rounded-2xl border-2 border-foreground/15 bg-card p-4 sm:p-5">
+          return shell(
+            <>
               <div className="grid gap-1">
                 <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <Layers className="size-3.5" aria-hidden />
                   {supersetLabel(group.length)} · exercícios {log.exercises.indexOf(group[0]) + 1}–{log.exercises.indexOf(group.at(-1)!) + 1} de {log.exercises.length}
+                  {current && <NowPill />}
                 </p>
                 <h2 className="font-heading text-lg font-semibold">{group.map((i) => i.exercise.name).join(" + ")}</h2>
                 <p className="text-sm text-muted-foreground">
@@ -306,7 +366,7 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
                 return (
                   <div key={round} className="grid gap-2">
                     <p className="text-sm font-semibold">Volta {round + 1}</p>
-                    <SetHeader first="Exercício" />
+                    <SetHeader />
                     {inRound.map((item, position) => (
                       <SetRow
                         key={item.id}
@@ -314,6 +374,7 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
                         index={round}
                         set={sets[item.id][round]}
                         rowLabel={item.exercise.name}
+                        stacked
                         pending={pending.has(setKey(item.id, round + 1))}
                         onChange={(patch) => update(item.id, round, patch)}
                         onToggle={() => toggle(item, round, position === inRound.length - 1 ? groupRest : null)}
@@ -322,13 +383,112 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
                   </div>
                 );
               })}
-            </li>
+            </>,
+            true,
           );
         })}
       </ol>
 
+      <NextBar
+        next={next}
+        onSet={(step) => void toggle(step.item, step.index, step.restAfter)}
+        onCardio={(itemId) => blockRefs.current[blocks.find((b) => b[0].id === itemId)?.[0].id ?? ""]?.scrollIntoView({ block: "start" })}
+        onFinish={() => {
+          const finish = document.getElementById("finish-title");
+          finish?.scrollIntoView({ block: "start" });
+          document.getElementById("finish-notes")?.focus({ preventScroll: true });
+        }}
+        busy={next?.kind === "set" && sets[next.item.id][next.index].saving}
+      />
+
       <FinishWorkout logId={log.id} done={done} planned={planned} unit={unit} pendingSaves={pending.size} />
       {rest && <RestTimer key={rest.run} total={rest.total} onClose={() => setRest(null)} />}
+    </div>
+  );
+}
+
+function doneDetail(block: Prescription[], sets: Record<string, SetState[]>): string {
+  const strength = block.flatMap((i) => (i.kind === "strength" ? [i] : []));
+  if (strength.length === 0) return "Cardio registrado";
+  const count = strength.reduce((sum, i) => sum + sets[i.id].length, 0);
+  return `${count} ${count === 1 ? "série feita" : "séries feitas"}`;
+}
+
+function NowPill() {
+  return (
+    <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">
+      <span className="size-1.5 animate-pulse rounded-full bg-current" aria-hidden />
+      Agora
+    </span>
+  );
+}
+
+function DoneHeader({ names, detail, open, onToggle }: { names: string[]; detail: string; open: boolean; onToggle: () => void }) {
+  const title = names.join(" + ");
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      className="-m-1 flex items-center gap-3 rounded-xl p-1 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+    >
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground" aria-hidden>
+        <Check className="size-4" strokeWidth={3} />
+      </span>
+      <span className="grid min-w-0 flex-1">
+        <span className="truncate font-semibold">{title}</span>
+        <span className="text-xs text-muted-foreground">Concluído · {detail}</span>
+      </span>
+      <span className="text-sm font-medium text-muted-foreground">
+        {open ? "Recolher" : "Rever"}
+        <span className="sr-only"> {title}</span>
+      </span>
+      <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none", open && "rotate-180")} aria-hidden />
+    </button>
+  );
+}
+
+// The one-thumb action, pinned to the bottom while training: complete the
+// next set, jump to the cardio to log, or go finish the workout.
+function NextBar({ next, onSet, onCardio, onFinish, busy }: { next: Step | null; onSet: (step: Extract<Step, { kind: "set" }>) => void; onCardio: (itemId: string) => void; onFinish: () => void; busy: boolean }) {
+  return (
+    <div className="sticky bottom-0 z-30 -mx-4 border-t bg-background/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:px-4 lg:bottom-4">
+      {next === null ? (
+        <div className="flex items-center gap-3">
+          <span className="grid min-w-0 flex-1">
+            <span className="font-semibold">Tudo feito!</span>
+            <span className="text-xs text-muted-foreground">Conte como foi e conclua o treino.</span>
+          </span>
+          <Button size="lg" onClick={onFinish}>
+            <Check aria-hidden />
+            Finalizar
+          </Button>
+        </div>
+      ) : next.kind === "cardio" ? (
+        <div className="flex items-center gap-3">
+          <span className="grid min-w-0 flex-1">
+            <span className="text-xs text-muted-foreground">Agora</span>
+            <span className="truncate font-semibold">{next.item.exercise.name}</span>
+          </span>
+          <Button size="lg" variant="secondary" onClick={() => onCardio(next.item.id)}>
+            <HeartPulse aria-hidden />
+            Registrar cardio
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3">
+          <span className="grid min-w-0 flex-1">
+            <span className="text-xs text-muted-foreground tabular-nums">
+              Série {next.index + 1} de {next.item.sets} · {repsForSet(next.item, next.index + 1)} reps
+            </span>
+            <span className="truncate font-semibold">{next.item.exercise.name}</span>
+          </span>
+          <Button size="lg" disabled={busy} onClick={() => onSet(next)} aria-label={`Concluir próxima série: ${next.item.exercise.name}, série ${next.index + 1}`}>
+            {busy ? <LoaderCircle className="animate-spin" aria-hidden /> : <Check aria-hidden />}
+            Concluir série
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -342,18 +502,24 @@ type SetRowProps = {
   pending: boolean;
   onChange: (patch: Partial<SetState>) => void;
   onToggle: () => void;
+  /** Superset rows: the exercise name sits on its own line, never truncated. */
+  stacked?: boolean;
 };
 
-function SetRow({ item, index, set, rowLabel, pending, onChange, onToggle }: SetRowProps) {
+function SetRow({ item, index, set, rowLabel, pending, onChange, onToggle, stacked = false }: SetRowProps) {
   const label = `${item.exercise.name}, série ${index + 1}`;
   return (
     <div
       className={cn(
-        "grid grid-cols-[minmax(3rem,auto)_minmax(0,1fr)_minmax(0,1fr)_3rem] items-center gap-2 rounded-lg p-1",
+        "grid items-center gap-2 rounded-lg p-1",
+        stacked ? "grid-cols-[minmax(0,1fr)_minmax(0,1fr)_3rem]" : "grid-cols-[minmax(3rem,auto)_minmax(0,1fr)_minmax(0,1fr)_3rem]",
         set.completed && "bg-brand/15 dark:bg-brand/10",
       )}
     >
-      <span className={cn("text-sm font-semibold tabular-nums", rowLabel.length > 2 ? "max-w-28 truncate text-xs" : "text-center")}>{rowLabel}{pending && <CloudOff className="ml-1 inline size-3.5 text-warning" aria-label="aguardando envio" />}</span>
+      <span className={cn("text-sm font-semibold tabular-nums", stacked ? "col-span-3 px-1 text-sm" : "text-center")}>
+        {rowLabel}
+        {pending && <CloudOff className="ml-1 inline size-3.5 text-warning" aria-label="aguardando envio" />}
+      </span>
       <input
         aria-label={`Repetições — ${label}`}
         inputMode="numeric"
@@ -423,10 +589,17 @@ function targetLine(item: StrengthPrescription, withRest: boolean) {
   ].filter(Boolean).join(" · ");
 }
 
-function SetHeader({ first }: { first: string }) {
+/** Column titles; without `first` it matches the stacked superset rows. */
+function SetHeader({ first }: { first?: string }) {
   return (
-    <div className="grid grid-cols-[minmax(3rem,auto)_minmax(0,1fr)_minmax(0,1fr)_3rem] gap-2 px-1 text-xs text-muted-foreground" aria-hidden>
-      <span>{first}</span>
+    <div
+      className={cn(
+        "grid gap-2 px-1 text-xs text-muted-foreground",
+        first ? "grid-cols-[minmax(3rem,auto)_minmax(0,1fr)_minmax(0,1fr)_3rem]" : "grid-cols-[minmax(0,1fr)_minmax(0,1fr)_3rem]",
+      )}
+      aria-hidden
+    >
+      {first && <span>{first}</span>}
       <span>Reps</span>
       <span>Carga (kg)</span>
       <span className="text-center">Feita</span>
@@ -497,8 +670,9 @@ function FinishWorkout({ logId, done, planned, unit, pendingSaves }: { logId: st
 }
 
 function RestTimer({ total, onClose }: { total: number; onClose: () => void }) {
-  // Fixed when the timer mounts; a new rest remounts it through its key.
-  const [endsAt] = useState(() => Date.now() + total * 1000);
+  // Fixed when the timer mounts (a new rest remounts it through its key); +15 s pushes the end.
+  const [startedAt] = useState(() => Date.now());
+  const [endsAt, setEndsAt] = useState(() => startedAt + total * 1000);
   const [remaining, setRemaining] = useState(total);
   const announced = useRef(false);
 
@@ -520,24 +694,35 @@ function RestTimer({ total, onClose }: { total: number; onClose: () => void }) {
 
   const minutes = Math.floor(remaining / 60);
   const seconds = String(remaining % 60).padStart(2, "0");
+  const length = Math.round((endsAt - startedAt) / 1000);
 
   return (
     <div
       role="status"
-      className="fixed inset-x-4 bottom-20 z-40 mx-auto flex max-w-md items-center gap-3 rounded-xl border bg-popover p-3 text-popover-foreground shadow-lg lg:bottom-6"
+      className="fixed inset-x-4 bottom-[calc(6.5rem+env(safe-area-inset-bottom))] z-40 mx-auto grid max-w-md gap-3 overflow-hidden rounded-2xl border bg-popover p-4 text-popover-foreground shadow-lg lg:bottom-28"
     >
-      <span className="flex size-10 items-center justify-center rounded-full bg-brand text-brand-foreground">
-        <Timer className="size-5" aria-hidden />
-      </span>
-      <div className="grid flex-1">
-        <span className="text-xs text-muted-foreground">{remaining === 0 ? "Descanso concluído" : `Descanso de ${formatRest(total)}`}</span>
-        <span className="font-heading text-2xl font-semibold tabular-nums" aria-live={remaining === 0 ? "assertive" : "off"}>
-          {remaining === 0 ? "Próxima série!" : `${minutes}:${seconds}`}
+      <div className="flex items-center gap-3">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground">
+          <Timer className="size-5" aria-hidden />
         </span>
+        <div className="grid flex-1">
+          <span className="text-xs text-muted-foreground">{remaining === 0 ? "Descanso concluído" : `Descanso de ${formatRest(length)}`}</span>
+          <span className="font-heading text-4xl leading-none font-extrabold tabular-nums" aria-live={remaining === 0 ? "assertive" : "off"}>
+            {remaining === 0 ? "Bora!" : `${minutes}:${seconds}`}
+          </span>
+        </div>
+        {remaining > 0 && (
+          <Button variant="secondary" size="sm" onClick={() => setEndsAt((t) => t + 15_000)} aria-label="Mais 15 segundos de descanso">
+            +15 s
+          </Button>
+        )}
+        <Button variant="ghost" onClick={onClose}>
+          {remaining === 0 ? "Fechar" : "Pular"}
+        </Button>
       </div>
-      <Button variant="ghost" onClick={onClose}>
-        {remaining === 0 ? "Fechar" : "Pular"}
-      </Button>
+      <div className="h-1.5 overflow-hidden rounded-full bg-[var(--meter-track)]" aria-hidden>
+        <div className="h-full rounded-full bg-[var(--meter-fill)] transition-[width] duration-300 motion-reduce:transition-none" style={{ width: `${length ? (remaining / length) * 100 : 0}%` }} />
+      </div>
     </div>
   );
 }

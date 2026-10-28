@@ -7,13 +7,13 @@ import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireStaff } from "@/lib/auth/dal";
+import { formatDate } from "@/lib/format";
 import { listStudents } from "@/lib/students/queries";
 import { PLAN_STATUS_LABELS, PLAN_STATUS_TONES } from "@/lib/workouts/labels";
 import { getPlan, listExercises } from "@/lib/workouts/queries";
 import { AddSessionForm } from "./add-session-form";
 import { PlanDetailsForm } from "./plan-details-form";
-import { DuplicatePlanForm } from "./duplicate-plan-form";
-import { PlanStatusActions } from "./plan-status-actions";
+import { PlanActions } from "./plan-actions";
 import { SessionCard } from "./session-card";
 
 export const metadata: Metadata = { title: "Plano de treino" };
@@ -30,6 +30,7 @@ async function PlanBuilder({ params }: Pick<PageProps<"/workouts/[planId]">, "pa
 
   const pickable = exercises.map(({ id, name, muscleGroup }) => ({ id, name, muscleGroup }));
   const suggestedName = `Treino ${LETTERS[plan.sessions.length] ?? plan.sessions.length + 1}`;
+  const period = plan.startsOn || plan.endsOn ? [plan.startsOn && `de ${formatDate(plan.startsOn)}`, plan.endsOn && `até ${formatDate(plan.endsOn)}`].filter(Boolean).join(" ") : null;
 
   return (
     <div className="grid gap-8">
@@ -47,8 +48,21 @@ async function PlanBuilder({ params }: Pick<PageProps<"/workouts/[planId]">, "pa
             "Modelo de treino: use para criar planos de alunos em um clique."
           )
         }
+        eyebrow={
+          <span className="inline-flex items-center gap-2 normal-case">
+            {plan.isTemplate ? <StatusBadge tone="info">Modelo</StatusBadge> : <StatusBadge tone={PLAN_STATUS_TONES[plan.status]}>{PLAN_STATUS_LABELS[plan.status]}</StatusBadge>}
+            {period && <span className="tracking-normal tabular-nums">{period}</span>}
+          </span>
+        }
         actions={
-          plan.isTemplate ? <StatusBadge tone="info">Modelo</StatusBadge> : <StatusBadge tone={PLAN_STATUS_TONES[plan.status]}>{PLAN_STATUS_LABELS[plan.status]}</StatusBadge>
+          <PlanActions
+            planId={plan.id}
+            planName={plan.name}
+            status={plan.status}
+            studentName={plan.studentName}
+            isTemplate={plan.isTemplate}
+            students={students.filter((s) => s.status === "active").map((s) => ({ id: s.userId, name: s.fullName }))}
+          />
         }
       />
 
@@ -76,30 +90,6 @@ async function PlanBuilder({ params }: Pick<PageProps<"/workouts/[planId]">, "pa
         </CardContent>
       </Card>
 
-      <Card className="gap-6 py-6 [--card-spacing:--spacing(6)]">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold"><h2>{plan.isTemplate ? "Usar este modelo" : "Duplicar"}</h2></CardTitle>
-          <CardDescription>A cópia leva treinos, exercícios, cardio e bi-sets, e começa como rascunho.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DuplicatePlanForm
-            planId={plan.id}
-            planName={plan.name}
-            isTemplate={plan.isTemplate}
-            students={students.filter((s) => s.status === "active").map((s) => ({ id: s.userId, name: s.fullName }))}
-          />
-        </CardContent>
-      </Card>
-
-      <Card className="gap-6 py-6 [--card-spacing:--spacing(6)]">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold"><h2>{plan.isTemplate ? "Modelo" : "Publicação"}</h2></CardTitle>
-          <CardDescription>{plan.isTemplate ? "Modelos nunca aparecem para alunos." : "Controle o que o aluno vê."}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <PlanStatusActions planId={plan.id} status={plan.status} studentName={plan.studentName} isTemplate={plan.isTemplate} />
-        </CardContent>
-      </Card>
     </div>
   );
 }

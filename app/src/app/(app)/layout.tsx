@@ -112,7 +112,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           </div>
         </header>
 
-        <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-28 sm:px-6 lg:px-10 lg:pt-8 lg:pb-12 print:max-w-none print:p-0">
+        <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-28 workout-focus:pb-6 sm:px-6 lg:px-10 lg:pt-8 lg:pb-12 print:max-w-none print:p-0">
           {children}
         </main>
       </div>
@@ -123,7 +123,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
 
       <nav
         aria-label="Navegação principal"
-        className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden print:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur workout-focus:hidden lg:hidden print:hidden"
       >
         <Suspense fallback={<AppNavSkeleton variant="bottom" />}>
           <RoleNav variant="bottom" />

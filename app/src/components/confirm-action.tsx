@@ -18,7 +18,10 @@ import {
 type Result = { ok: true } | { ok: false; message: string };
 
 type ConfirmActionProps = {
-  trigger: React.ReactElement;
+  /** Omit when opened from elsewhere (e.g. a menu item) through `open`. */
+  trigger?: React.ReactElement;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   title: string;
   description: ReactNode;
   confirmLabel: string;
@@ -31,6 +34,8 @@ type ConfirmActionProps = {
 // the action runs and reports the outcome with a toast.
 export function ConfirmAction({
   trigger,
+  open: controlledOpen,
+  onOpenChange,
   title,
   description,
   confirmLabel,
@@ -38,7 +43,9 @@ export function ConfirmAction({
   destructive = false,
   onConfirm,
 }: ConfirmActionProps) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => (onOpenChange ? onOpenChange(next) : setUncontrolledOpen(next));
   const [pending, startTransition] = useTransition();
 
   function confirm() {
@@ -55,7 +62,7 @@ export function ConfirmAction({
 
   return (
     <AlertDialog open={open} onOpenChange={(next) => !pending && setOpen(next)}>
-      <AlertDialogTrigger render={trigger} />
+      {trigger && <AlertDialogTrigger render={trigger} />}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
