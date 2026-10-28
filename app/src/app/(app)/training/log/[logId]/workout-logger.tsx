@@ -75,14 +75,6 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
   const [reopened, setReopened] = useState<Set<string>>(() => new Set());
   const blockRefs = useRef<Record<string, HTMLLIElement | null>>({});
 
-  // Focus mode: the app's bottom tab bar steps aside while training.
-  useEffect(() => {
-    document.documentElement.dataset.focus = "workout";
-    return () => {
-      delete document.documentElement.dataset.focus;
-    };
-  }, []);
-
   // Each strength set and each cardio block is one step of the workout.
   const steps = [...Object.values(sets).flat(), ...Object.values(cardio)];
   const done = steps.filter((s) => s.completed).length;
@@ -231,7 +223,9 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
   }
 
   return (
-    <div className="grid gap-6">
+    // Focus mode: while this is on the page the app's bottom tab bar steps
+    // aside. It is in the server HTML, so the bar never flashes on load.
+    <div data-workout-focus className="grid gap-6">
       <div className="sticky top-16 z-20 -mx-4 border-b bg-background/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border lg:top-[4.5rem]">
         <div className="flex items-center justify-between gap-3 text-sm">
           <span className="font-medium">Progresso</span>

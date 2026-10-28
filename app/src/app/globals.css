@@ -210,7 +210,7 @@
 /* Desktop sidebar collapsed to icons: set on <html> before first paint. */
 @custom-variant sidebar-collapsed (&:where([data-sidebar="collapsed"] *));
 /* A workout in progress: the logger sets it on <html> while mounted. */
-@custom-variant workout-focus (&:where([data-focus="workout"] *));
+@custom-variant workout-focus (&:where(html:has([data-workout-focus]) *));
 
 @utility glow-brand {
   box-shadow: 0 0 0 1px rgb(183 243 74 / 0.25), 0 8px 32px -8px var(--glow);

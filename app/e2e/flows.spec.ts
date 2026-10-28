@@ -164,6 +164,16 @@ test("@supabase student records a workout and the trainer sees it", async ({ bro
   await studentPage.getByRole("link", { name: /Treino A/ }).first().click();
   await studentPage.getByRole("button", { name: "Iniciar treino" }).click();
   await expect(studentPage).toHaveURL(/\/training\/log\/[0-9a-f-]{36}$/);
+  // Focus mode: the tab bar is gone from the first paint, not after
+  // hydration. With the app bundles blocked React never hydrates, so only the
+  // streamed server HTML is on screen.
+  const noScript = await browser.newContext({ viewport: { width: 360, height: 780 }, storageState: await studentPage.context().storageState() });
+  await noScript.route("**/_next/static/**/*.js", (route) => route.abort());
+  const firstPaint = await noScript.newPage();
+  await firstPaint.goto(studentPage.url());
+  await expect(firstPaint.getByLabel("Repetições — Agachamento livre, série 1")).toBeVisible();
+  await expect(firstPaint.getByRole("navigation", { name: "Navegação principal" }).filter({ visible: true })).toHaveCount(0);
+  await noScript.close();
 
   await studentPage.getByLabel("Repetições — Agachamento livre, série 1").fill("10");
   await studentPage.getByRole("button", { name: "Concluir Agachamento livre, série 1" }).click();
@@ -195,6 +205,7 @@ test("@supabase student records a workout and the trainer sees it", async ({ bro
   await studentPage.getByRole("button", { name: "Concluir treino" }).click();
   await expect(studentPage.getByText("Concluído em").filter({ visible: true })).toBeVisible();
   await expect(studentPage.getByText("3 de 4", { exact: true }).filter({ visible: true })).toBeVisible();
+  await expect(studentPage.getByRole("navigation", { name: "Navegação principal" }).filter({ visible: true })).toHaveCount(1);
 
   // The home screen marks today as trained in the week strip.
   await studentPage.goto("/dashboard");
