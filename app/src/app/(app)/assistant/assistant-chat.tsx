@@ -5,16 +5,12 @@ import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 
 import { ExerciseVideo } from "@/components/workouts/exercise-demo";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { SUGGESTIONS } from "@/lib/assistant/suggestions";
 import { type AssistantEvent, type AssistantMessage, MAX_QUESTION_LENGTH, type VideoCard } from "@/lib/assistant/types";
 import { cn } from "@/lib/utils";
 
 type Turn = { id: string; role: "user" | "assistant"; text: string; videos: VideoCard[]; error?: string };
 type Saved = { history: AssistantMessage[]; turns: Turn[] };
-
-const SUGGESTIONS = {
-  student: ["O que eu treino hoje?", "Como faço agachamento do jeito certo?", "Me mostra o vídeo do supino", "Quanto tempo devo descansar entre as séries?"],
-  staff: ["Como convido um aluno?", "Como coloco um vídeo do TikTok em um exercício?", "Como monto um bi-set?", "Me mostra o vídeo do agachamento"],
-} as const;
 
 const UNAVAILABLE = "O assistente está indisponível no momento. Tente novamente em instantes.";
 
@@ -33,9 +29,15 @@ function save(key: string, value: Saved) {
   } catch {}
 }
 
-type Props = { userId: string; role: "staff" | "student"; firstName: string };
+type Props = {
+  userId: string;
+  role: "staff" | "student";
+  firstName: string;
+  /** A suggestion opened from a shortcut link: asked once, as soon as the chat loads. */
+  initialQuestion?: string;
+};
 
-export function AssistantChat({ userId, role, firstName }: Props) {
+export function AssistantChat({ userId, role, firstName, initialQuestion }: Props) {
   const storageKey = `fitflow-assistant:${userId}`;
   const [history, setHistory] = useState<AssistantMessage[]>([]);
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -43,13 +45,25 @@ export function AssistantChat({ userId, role, firstName }: Props) {
   const [pending, setPending] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const askedInitial = useRef(false);
 
   useEffect(() => {
     const saved = load(storageKey);
     setHistory(saved.history);
     setTurns(saved.turns);
+    setLoaded(true);
     return () => abortRef.current?.abort();
   }, [storageKey]);
+
+  useEffect(() => {
+    if (!loaded || !initialQuestion || askedInitial.current) return;
+    askedInitial.current = true;
+    // Drop ?q= so a reload does not ask (and spend a question) again.
+    window.history.replaceState(null, "", window.location.pathname);
+    void ask(initialQuestion);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once, after the saved conversation is restored
+  }, [loaded, initialQuestion]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });

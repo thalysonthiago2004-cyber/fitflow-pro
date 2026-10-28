@@ -11,7 +11,8 @@ import { formatVolume } from "@/lib/format";
 
 const PRESETS = [200, 300, 500];
 
-export function QuickAdd() {
+/** `compact` keeps only the preset buttons (for the home screen). */
+export function QuickAdd({ compact = false }: { compact?: boolean }) {
   const [pending, startTransition] = useTransition();
   const [custom, setCustom] = useState("");
 
@@ -43,7 +44,7 @@ export function QuickAdd() {
           </Button>
         ))}
       </div>
-      <form
+      {!compact && <form
         className="flex items-end gap-2"
         onSubmit={(event) => {
           event.preventDefault();
@@ -57,7 +58,7 @@ export function QuickAdd() {
         <Button type="submit" variant="secondary" disabled={pending || !custom}>
           Adicionar
         </Button>
-      </form>
+      </form>}
     </div>
   );
 }

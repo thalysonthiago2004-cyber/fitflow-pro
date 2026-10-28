@@ -186,6 +186,12 @@ test("@supabase student records a workout and the trainer sees it", async ({ bro
   await studentPage.getByRole("button", { name: "Concluir treino" }).click();
   await expect(studentPage.getByText("Concluído em").filter({ visible: true })).toBeVisible();
   await expect(studentPage.getByText("2 de 4", { exact: true }).filter({ visible: true })).toBeVisible();
+
+  // The home screen marks today as trained in the week strip.
+  await studentPage.goto("/dashboard");
+  await expect(studentPage.getByText("Treino de hoje concluído. Mandou bem!").filter({ visible: true })).toBeVisible();
+  const week = studentPage.getByRole("region", { name: "Sua semana" });
+  await expect(week.getByText(/\(hoje\): treino concluído/)).toHaveCount(1);
   await studentPage.context().close();
 
   await login(page, trainer.email, trainer.password);

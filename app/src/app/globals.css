@@ -198,6 +198,16 @@
   background-image: radial-gradient(120% 90% at 100% 0%, rgb(183 243 74 / 0.16), transparent 55%);
 }
 
+/* Faint measurement grid fading out from the top-right corner. Decorative:
+   use on an absolutely positioned, aria-hidden layer behind the content. */
+@utility bg-tech-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--foreground) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--foreground) 7%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(ellipse 90% 80% at 100% 0%, black, transparent 75%);
+}
+
 
 /* Printing (e.g. the student report → PDF) always uses the light palette. */
 @media print {
