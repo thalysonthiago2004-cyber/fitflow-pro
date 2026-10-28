@@ -896,6 +896,47 @@ test("@supabase reports: filters, sorting, CSV export and staff-only access", as
   await studentPage.context().close();
 });
 
+test("@supabase students list, student page, plan search and appearance settings", async ({ page }) => {
+  await login(page, trainer.email, trainer.password);
+  await page.goto("/students");
+  const row = page.getByRole("row", { name: new RegExp(student.name) });
+  await expect(row.getByRole("cell").nth(2)).toContainText(/^hoje/);
+  await page.getByRole("navigation", { name: "Filtros rápidos" }).getByRole("link", { name: /Sem plano ativo/ }).click();
+  await expect(page).toHaveURL(/filtro=no_plan/);
+  await expect(page.getByText("Nenhum aluno nesse filtro. Bom sinal!")).toBeVisible();
+  await page.getByRole("navigation", { name: "Filtros rápidos" }).getByRole("link", { name: /Todos/ }).click();
+
+  await page.getByRole("link", { name: student.name }).first().click();
+  await expect(page.getByRole("region", { name: "Resumo" }).getByText("Treinos (30 dias)")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Seções do aluno" })).toBeVisible();
+  await page.getByRole("link", { name: "Agendar sessão", exact: true }).click();
+  await expect(page).toHaveURL(/\/schedule\?aluno=/);
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "Nova sessão" })).toBeVisible();
+  await expect(dialog.getByLabel("Aluno", { exact: true }).locator("option:checked")).toHaveText(student.name);
+  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/schedule$/);
+
+  await page.goto("/workouts");
+  await page.getByRole("searchbox", { name: "Buscar plano ou aluno" }).fill("Hipertrofia");
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/q=Hipertrofia/);
+  await expect(page.getByRole("link", { name: /Hipertrofia — fase 1/ })).toBeVisible();
+  await page.getByRole("searchbox", { name: "Buscar plano ou aluno" }).fill("zzz-nada");
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Nenhum plano encontrado")).toBeVisible();
+
+  await page.goto("/settings");
+  await page.getByRole("navigation", { name: "Seções das configurações" }).getByRole("link", { name: "Aparência" }).click();
+  await page.getByRole("radio", { name: /Claro/ }).check();
+  await expect(page.locator("html")).toHaveClass(/light/);
+  await page.reload();
+  await expect(page.locator("html")).toHaveClass(/light/);
+  await expect(page.getByRole("radio", { name: /Claro/ })).toBeChecked();
+  await page.getByRole("radio", { name: /Escuro/ }).check();
+  await expect(page.locator("html")).toHaveClass(/dark/);
+});
+
 test("@supabase students reach their trainer on WhatsApp", async ({ browser, page }) => {
   await login(page, trainer.email, trainer.password);
   await page.goto("/settings");

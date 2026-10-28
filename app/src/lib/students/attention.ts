@@ -1,3 +1,5 @@
+import { daysBetweenDates } from "@/lib/format";
+
 // What a trainer should look at today. Pure so it can be tested; the
 // dashboard feeds it RLS-scoped rows.
 
@@ -13,8 +15,7 @@ export type AttentionInput = {
 
 export type AttentionItem = { studentId: string; studentName: string; reason: string; href: string };
 
-const DAY = 86_400_000;
-const daysBetween = (from: string, to: string) => Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / DAY);
+const daysBetween = daysBetweenDates;
 
 export const INACTIVE_DAYS = 7;
 export const ENDING_SOON_DAYS = 7;

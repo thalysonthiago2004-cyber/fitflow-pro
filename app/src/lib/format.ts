@@ -72,6 +72,11 @@ export function formatVolume(ml: number): string {
   return ml < 1000 ? `${formatNumber(ml, 0)} ml` : `${formatNumber(ml / 1000, 2)} L`;
 }
 
+/** Whole days from one calendar date to another (negative when `to` is earlier). */
+export function daysBetweenDates(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86_400_000);
+}
+
 /** A real YYYY-MM-DD calendar date ("2026-02-31" is not: Date would roll it over to March). */
 export function isCalendarDate(value: unknown): value is string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;

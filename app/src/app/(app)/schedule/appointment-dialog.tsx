@@ -35,10 +35,12 @@ type Props = {
   appointment?: DialogAppointment;
   defaultDate: string;
   trigger: React.ReactElement;
+  /** Opened from a student's page (/schedule?aluno=…): starts open with them chosen. */
+  defaultStudentId?: string;
 };
 
-export function AppointmentDialog({ students, appointment, defaultDate, trigger }: Props) {
-  const [open, setOpen] = useState(false);
+export function AppointmentDialog({ students, appointment, defaultDate, trigger, defaultStudentId }: Props) {
+  const [open, setOpen] = useState(Boolean(defaultStudentId));
   // A new key per opening resets the form to the session's current values.
   const [session, setSession] = useState(0);
 
@@ -47,6 +49,8 @@ export function AppointmentDialog({ students, appointment, defaultDate, trigger 
       open={open}
       onOpenChange={(next) => {
         if (next) setSession((n) => n + 1);
+        // Drop ?aluno= so closing and reloading does not reopen the form.
+        else if (defaultStudentId) window.history.replaceState(null, "", window.location.pathname);
         setOpen(next);
       }}
     >
@@ -65,14 +69,14 @@ export function AppointmentDialog({ students, appointment, defaultDate, trigger 
             )}
           </DialogDescription>
         </DialogHeader>
-        <AppointmentForm key={session} students={students} appointment={appointment} defaultDate={defaultDate} onDone={() => setOpen(false)} />
+        <AppointmentForm key={session} students={students} appointment={appointment} defaultDate={defaultDate} defaultStudentId={defaultStudentId} onDone={() => setOpen(false)} />
         {appointment && <StatusActions appointment={appointment} onDone={() => setOpen(false)} />}
       </DialogContent>
     </Dialog>
   );
 }
 
-function AppointmentForm({ students, appointment, defaultDate, onDone }: Omit<Props, "trigger"> & { onDone: () => void }) {
+function AppointmentForm({ students, appointment, defaultDate, defaultStudentId, onDone }: Omit<Props, "trigger"> & { onDone: () => void }) {
   const action = appointment ? updateAppointment.bind(null, appointment.id) : createAppointment;
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, initialFormState);
 
@@ -98,7 +102,7 @@ function AppointmentForm({ students, appointment, defaultDate, onDone }: Omit<Pr
         label="Aluno"
         placeholder="Escolha o aluno"
         options={students.map((s) => ({ value: s.id, label: s.name }))}
-        defaultValue={v("studentId", appointment?.studentId ?? "")}
+        defaultValue={v("studentId", appointment?.studentId ?? defaultStudentId ?? "")}
         errors={state.fieldErrors?.studentId}
       />
       <div className="grid grid-cols-2 gap-3">

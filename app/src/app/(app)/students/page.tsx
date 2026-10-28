@@ -9,14 +9,33 @@ import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireStaff } from "@/lib/auth/dal";
-import { formatDate } from "@/lib/format";
+import { addDays, formatDate, todayISO } from "@/lib/format";
+import { getWorkspaceCompletions } from "@/lib/progress/queries";
+import { listAppointments } from "@/lib/schedule/queries";
+import { localTime } from "@/lib/schedule/time";
+import {
+  ROSTER_FILTERS, ROSTER_FILTER_LABELS, ROSTER_SORTS, ROSTER_SORT_LABELS, buildRoster, daysAgo, filterRoster, isInactive, parseRosterFilter, parseRosterSort, sortRoster,
+} from "@/lib/students/roster";
+import { listPlans } from "@/lib/workouts/queries";
 import { listPendingInvitations, listStudents } from "@/lib/students/queries";
-import { STUDENT_STATUS_LABELS } from "@/lib/students/schemas";
 import { normalize } from "@/lib/text";
 import { cn } from "@/lib/utils";
 import { InvitationActions } from "./invitation-actions";
 
 export const metadata: Metadata = { title: "Alunos" };
+
+const sessionDay = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" });
+const sessionLabel = (iso: string) => `${sessionDay.format(new Date(iso)).replace(".", "")} · ${localTime(iso)}`;
+
+function Initials({ name }: { name: string }) {
+  const parts = name.trim().split(/\s+/);
+  const text = ((parts[0]?.[0] ?? "") + (parts.length > 1 ? parts.at(-1)![0] : "")).toUpperCase();
+  return (
+    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold" aria-hidden>
+      {text}
+    </span>
+  );
+}
 
 type View = "active" | "archived" | "invites";
 const VIEWS: { key: View; label: string }[] = [
@@ -30,11 +49,26 @@ async function StudentsContent({ searchParams }: Pick<PageProps<"/students">, "s
   const view: View = VIEWS.some((v) => v.key === params.view) ? (params.view as View) : "active";
   const query = typeof params.q === "string" ? params.q.trim().slice(0, 80) : "";
 
+  const filter = parseRosterFilter(params.filtro);
+  const sort = parseRosterSort(params.ordem);
+  const today = todayISO();
+
   const user = await requireStaff();
-  const [students, invitations] = await Promise.all([
+  const [students, invitations, activePlans, completions, agenda] = await Promise.all([
     listStudents(user.workspace.id),
     listPendingInvitations(user.workspace.id),
+    listPlans({ workspaceId: user.workspace.id, statuses: ["active"] }),
+    getWorkspaceCompletions(user.workspace.id, addDays(today, -365)),
+    listAppointments(user.workspace.id, today, addDays(today, 60)),
   ]);
+  const now = new Date();
+  const roster = buildRoster({
+    students,
+    activePlans,
+    completions,
+    upcoming: agenda.filter((a) => a.status === "scheduled" && new Date(a.endsAt) > now),
+    today,
+  });
 
   const counts: Record<View, number> = {
     active: students.filter((s) => s.status === "active").length,
@@ -44,7 +78,13 @@ async function StudentsContent({ searchParams }: Pick<PageProps<"/students">, "s
 
   const needle = normalize(query);
   const matches = (...fields: string[]) => !needle || fields.some((f) => normalize(f).includes(needle));
-  const visibleStudents = students.filter((s) => s.status === view && matches(s.fullName, s.email));
+  const inView = roster.filter((s) => s.status === view && matches(s.fullName, s.email));
+  const visibleStudents = sortRoster(view === "active" ? filterRoster(inView, filter, today) : inView, sort);
+  const lastLabel = (date: string | null) => (date ? daysAgo(date, today)! : "Nunca treinou");
+  const keep = (extra: Record<string, string>) => ({
+    pathname: "/students",
+    query: { view, ...(query ? { q: query } : {}), ...(filter !== "all" ? { filtro: filter } : {}), ...(sort !== "name" ? { ordem: sort } : {}), ...extra },
+  });
   const visibleInvites = invitations.filter((i) => matches(i.fullName, i.email));
 
   return (
@@ -73,7 +113,47 @@ async function StudentsContent({ searchParams }: Pick<PageProps<"/students">, "s
         </label>
         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <Input id="student-search" name="q" type="search" defaultValue={query} placeholder="Buscar por nome ou e-mail" className="pl-9" />
+        {filter !== "all" && <input type="hidden" name="filtro" value={filter} />}
+        {sort !== "name" && <input type="hidden" name="ordem" value={sort} />}
       </form>
+
+      {view !== "invites" && (
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          {view === "active" ? (
+            <nav aria-label="Filtros rápidos" className="flex flex-wrap gap-2">
+              {ROSTER_FILTERS.map((key) => {
+                const n = filterRoster(inView, key, today).length;
+                return (
+                  <Link
+                    key={key}
+                    href={keep({ filtro: key })}
+                    aria-current={filter === key ? "page" : undefined}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-medium outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 aria-[current=page]:border-transparent aria-[current=page]:bg-primary aria-[current=page]:text-primary-foreground"
+                  >
+                    {ROSTER_FILTER_LABELS[key]}
+                    <span className="tabular-nums opacity-70">{n}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          ) : (
+            <span />
+          )}
+          <nav aria-label="Ordenar alunos" className="flex flex-wrap items-center gap-1 text-sm">
+            <span className="mr-1 text-muted-foreground">Ordenar:</span>
+            {ROSTER_SORTS.map((key) => (
+              <Link
+                key={key}
+                href={keep({ ordem: key })}
+                aria-current={sort === key ? "page" : undefined}
+                className="inline-flex h-9 items-center rounded-full px-3 font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-[current=page]:bg-muted aria-[current=page]:text-foreground"
+              >
+                {ROSTER_SORT_LABELS[key]}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      )}
 
       {view === "invites" ? (
         visibleInvites.length === 0 ? (
@@ -99,16 +179,18 @@ async function StudentsContent({ searchParams }: Pick<PageProps<"/students">, "s
       ) : visibleStudents.length === 0 ? (
         <EmptyState
           icon={Users}
-          title={query ? "Nenhum aluno encontrado" : view === "active" ? "Nenhum aluno ativo" : "Nenhum aluno arquivado"}
+          title={query || filter !== "all" ? "Nenhum aluno encontrado" : view === "active" ? "Nenhum aluno ativo" : "Nenhum aluno arquivado"}
           description={
             query
               ? "Tente buscar por outro nome ou e-mail."
-              : view === "active"
-                ? "Convide seu primeiro aluno para começar a acompanhar os treinos."
-                : "Alunos arquivados aparecem aqui e podem ser reativados a qualquer momento."
+              : filter !== "all"
+                ? "Nenhum aluno nesse filtro. Bom sinal!"
+                : view === "active"
+                  ? "Convide seu primeiro aluno para começar a acompanhar os treinos."
+                  : "Alunos arquivados aparecem aqui e podem ser reativados a qualquer momento."
           }
           action={
-            view === "active" && !query ? (
+            view === "active" && !query && filter === "all" ? (
               <Link href="/students/invite" className={buttonVariants()}>
                 <UserPlus aria-hidden />
                 Convidar aluno
@@ -118,50 +200,74 @@ async function StudentsContent({ searchParams }: Pick<PageProps<"/students">, "s
         />
       ) : (
         <>
-          <ul className="grid gap-3 md:hidden">
+          <p className="-mb-3 text-sm text-muted-foreground" aria-live="polite">
+            {visibleStudents.length} {visibleStudents.length === 1 ? "aluno" : "alunos"}
+            {filter !== "all" && view === "active" && ` · ${ROSTER_FILTER_LABELS[filter].toLowerCase()}`}
+          </p>
+          <ul className="grid gap-2 md:hidden">
             {visibleStudents.map((student) => (
               <li key={student.userId}>
                 <Link
                   href={`/students/${student.userId}`}
-                  className="flex items-center gap-3 rounded-xl border bg-card p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
+                  className="flex items-center gap-3 rounded-2xl border bg-card p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
-                  <div className="grid min-w-0 flex-1 gap-1">
-                    <p className="truncate font-medium">{student.fullName}</p>
-                    <p className="truncate text-sm text-muted-foreground">{student.email}</p>
+                  <Initials name={student.fullName} />
+                  <div className="grid min-w-0 flex-1 gap-0.5">
+                    <p className="truncate font-semibold">{student.fullName}</p>
+                    <p className="truncate text-sm text-muted-foreground">
+                      {student.activePlan ? student.activePlan.name : <span className="font-medium text-warning">Sem plano ativo</span>}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      Último treino: {lastLabel(student.lastWorkout)}
+                      {student.nextSession && ` · Próxima sessão ${sessionLabel(student.nextSession.startsAt)}`}
+                    </p>
                   </div>
-                  <ChevronRight className="size-5 text-muted-foreground" aria-hidden />
+                  <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
                 </Link>
               </li>
             ))}
           </ul>
-          <div className="hidden overflow-hidden rounded-xl border bg-card md:block">
+          <div className="hidden overflow-hidden rounded-2xl border bg-card md:block">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="pl-4">Nome</TableHead>
-                  <TableHead>E-mail</TableHead>
-                  <TableHead>Objetivo</TableHead>
-                  <TableHead>Desde</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="pl-4">Aluno</TableHead>
+                  <TableHead>Plano ativo</TableHead>
+                  <TableHead>Último treino</TableHead>
+                  <TableHead className="text-right">Treinos (30 dias)</TableHead>
+                  <TableHead className="pr-4">Próxima sessão</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {visibleStudents.map((student) => (
                   <TableRow key={student.userId}>
-                    <TableCell className="pl-4 font-medium">
-                      <Link href={`/students/${student.userId}`} className="rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50">
-                        {student.fullName}
-                      </Link>
+                    <TableCell className="pl-4">
+                      <div className="flex items-center gap-3">
+                        <Initials name={student.fullName} />
+                        <div className="grid min-w-0">
+                          <Link href={`/students/${student.userId}`} className="truncate rounded-sm font-semibold underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50">
+                            {student.fullName}
+                          </Link>
+                          <span className="truncate text-xs text-muted-foreground">{student.email}</span>
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{student.email}</TableCell>
-                    <TableCell className={cn("max-w-56 truncate", !student.goal && "text-muted-foreground")}>
-                      {student.goal ?? "Não definido"}
+                    <TableCell className="max-w-56">
+                      {student.activePlan ? (
+                        <Link href={`/workouts/${student.activePlan.id}`} className="block truncate rounded-sm outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50">
+                          {student.activePlan.name}
+                        </Link>
+                      ) : (
+                        <StatusBadge tone="warning">Sem plano ativo</StatusBadge>
+                      )}
                     </TableCell>
-                    <TableCell className="tabular-nums">{formatDate(student.joinedAt)}</TableCell>
-                    <TableCell>
-                      <StatusBadge tone={student.status === "active" ? "success" : "neutral"}>
-                        {STUDENT_STATUS_LABELS[student.status]}
-                      </StatusBadge>
+                    <TableCell className={cn("tabular-nums", isInactive(student, today) && "text-warning")}>
+                      {lastLabel(student.lastWorkout)}
+                      {student.lastWorkout && <span className="block text-xs text-muted-foreground">{formatDate(student.lastWorkout)}</span>}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums">{student.workouts30}</TableCell>
+                    <TableCell className="pr-4 tabular-nums">
+                      {student.nextSession ? sessionLabel(student.nextSession.startsAt) : <span className="text-muted-foreground">—</span>}
                     </TableCell>
                   </TableRow>
                 ))}

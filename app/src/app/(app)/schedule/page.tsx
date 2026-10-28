@@ -68,7 +68,7 @@ function AppointmentCard({ appointment, students }: { appointment: Appointment; 
 
 async function ScheduleContent({ searchParams }: Pick<PageProps<"/schedule">, "searchParams">) {
   const user = await requireStaff();
-  const { semana } = await searchParams;
+  const { semana, aluno } = await searchParams;
   const today = todayISO();
   const days = weekDates(weekParam(semana));
   const [appointments, students] = await Promise.all([listAppointments(user.workspace.id, days[0], days[6]), listStudents(user.workspace.id)]);
@@ -79,10 +79,13 @@ async function ScheduleContent({ searchParams }: Pick<PageProps<"/schedule">, "s
   const isThisWeek = days.includes(today);
   const newDate = isThisWeek ? today : days[0];
 
+  // Only an active student of this workspace can be preselected from a link.
+  const preselected = typeof aluno === "string" && options.some((o) => o.id === aluno) ? aluno : undefined;
   const newButton = (
     <AppointmentDialog
       students={options}
       defaultDate={newDate}
+      defaultStudentId={preselected}
       trigger={
         <Button size="lg" disabled={options.length === 0}>
           <Plus aria-hidden />

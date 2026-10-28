@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { ChevronRight, ClipboardList, Dumbbell, Plus } from "lucide-react";
+import { ChevronRight, ClipboardList, Dumbbell, Plus, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { normalize } from "@/lib/text";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -17,6 +19,12 @@ import { StarterTemplatesButton } from "./starter-templates-button";
 export const metadata: Metadata = { title: "Planos de treino" };
 
 type View = PlanStatus | "templates";
+type Sort = "updated" | "name" | "student";
+const SORTS: { key: Sort; label: string }[] = [
+  { key: "updated", label: "Mais recentes" },
+  { key: "name", label: "Nome do plano" },
+  { key: "student", label: "Aluno" },
+];
 const VIEWS: { key: View; label: string }[] = [
   { key: "active", label: "Ativos" },
   { key: "draft", label: "Rascunhos" },
@@ -25,11 +33,23 @@ const VIEWS: { key: View; label: string }[] = [
 ];
 
 async function PlansContent({ searchParams }: Pick<PageProps<"/workouts">, "searchParams">) {
-  const { status } = await searchParams;
+  const { status, q, ordem } = await searchParams;
   const view: View = VIEWS.some((v) => v.key === status) ? (status as View) : "active";
+  const query = typeof q === "string" ? q.trim().slice(0, 80) : "";
+  const sort: Sort = SORTS.some((s) => s.key === ordem) ? (ordem as Sort) : "updated";
   const user = await requireStaff();
   const [plans, templates] = await Promise.all([listPlans({ workspaceId: user.workspace.id }), listPlans({ workspaceId: user.workspace.id, templates: true })]);
-  const visible = view === "templates" ? templates : plans.filter((p) => p.status === view);
+  const needle = normalize(query);
+  const inView = view === "templates" ? templates : plans.filter((p) => p.status === view);
+  const visible = inView
+    .filter((p) => !needle || normalize(p.name).includes(needle) || normalize(p.studentName).includes(needle))
+    .sort((a, b) =>
+      sort === "name" ? a.name.localeCompare(b.name, "pt-BR") : sort === "student" ? a.studentName.localeCompare(b.studentName, "pt-BR") || a.name.localeCompare(b.name, "pt-BR") : b.updatedAt.localeCompare(a.updatedAt),
+    );
+  const link = (extra: Record<string, string>) => ({
+    pathname: "/workouts",
+    query: { status: view, ...(query ? { q: query } : {}), ...(sort !== "updated" ? { ordem: sort } : {}), ...extra },
+  });
   const count = (key: View) => (key === "templates" ? templates.length : plans.filter((p) => p.status === key).length);
 
   return (
@@ -39,7 +59,7 @@ async function PlansContent({ searchParams }: Pick<PageProps<"/workouts">, "sear
           {VIEWS.map(({ key, label }) => (
             <li key={key}>
               <Link
-                href={{ pathname: "/workouts", query: { status: key } }}
+                href={{ pathname: "/workouts", query: { status: key, ...(query ? { q: query } : {}) } }}
                 aria-current={view === key ? "page" : undefined}
                 className="flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium whitespace-nowrap text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-[current=page]:bg-card aria-[current=page]:text-foreground aria-[current=page]:shadow-sm"
               >
@@ -51,7 +71,34 @@ async function PlansContent({ searchParams }: Pick<PageProps<"/workouts">, "sear
         </ul>
       </nav>
 
-      {visible.length === 0 ? (
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <form role="search" action="/workouts" className="relative w-full max-w-md">
+          <input type="hidden" name="status" value={view} />
+          {sort !== "updated" && <input type="hidden" name="ordem" value={sort} />}
+          <label htmlFor="plan-search" className="sr-only">
+            Buscar plano ou aluno
+          </label>
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <Input id="plan-search" name="q" type="search" defaultValue={query} placeholder="Buscar plano ou aluno" className="pl-9" />
+        </form>
+        <nav aria-label="Ordenar planos" className="flex flex-wrap items-center gap-1 text-sm">
+          <span className="mr-1 text-muted-foreground">Ordenar:</span>
+          {SORTS.filter((s) => view !== "templates" || s.key !== "student").map(({ key, label }) => (
+            <Link
+              key={key}
+              href={link({ ordem: key })}
+              aria-current={sort === key ? "page" : undefined}
+              className="inline-flex h-9 items-center rounded-full px-3 font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-[current=page]:bg-muted aria-[current=page]:text-foreground"
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+
+      {visible.length === 0 && query ? (
+        <EmptyState icon={Search} title="Nenhum plano encontrado" description="Tente buscar por outro nome de plano ou de aluno." />
+      ) : visible.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
           title={view === "active" ? "Nenhum plano ativo" : view === "draft" ? "Nenhum rascunho" : view === "templates" ? "Nenhum modelo ainda" : "Nenhum plano arquivado"}
@@ -91,6 +138,7 @@ async function PlansContent({ searchParams }: Pick<PageProps<"/workouts">, "sear
                     {plan.startsOn && ` · desde ${formatDate(plan.startsOn)}`}
                     {plan.endsOn && ` · até ${formatDate(plan.endsOn)}`}
                   </p>
+                  <p className="text-xs text-muted-foreground">Atualizado em {formatDate(plan.updatedAt)}</p>
                 </div>
                 {plan.isTemplate ? <StatusBadge tone="info">Modelo</StatusBadge> : <StatusBadge tone={PLAN_STATUS_TONES[plan.status]}>{PLAN_STATUS_LABELS[plan.status]}</StatusBadge>}
                 <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
