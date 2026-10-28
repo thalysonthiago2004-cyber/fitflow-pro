@@ -22,9 +22,9 @@ export function HydrationMeter({ totalMl, goalMl }: { totalMl: number; goalMl: n
           aria-valuemax={goalMl}
           aria-valuenow={Math.min(totalMl, goalMl)}
           aria-valuetext={`${formatVolume(totalMl)} de ${formatVolume(goalMl)}`}
-          className="h-3 overflow-hidden rounded-full bg-chart-2/20"
+          className="h-3 overflow-hidden rounded-full bg-meter-track"
         >
-          <div className="h-full rounded-full bg-chart-2 transition-[width] motion-reduce:transition-none" style={{ width: `${pct}%` }} />
+          <div className="h-full rounded-full bg-meter transition-[width] motion-reduce:transition-none" style={{ width: `${pct}%` }} />
         </div>
       )}
     </div>

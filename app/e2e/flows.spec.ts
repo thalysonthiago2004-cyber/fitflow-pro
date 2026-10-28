@@ -1021,6 +1021,24 @@ test("@supabase Firebase login: password change, reset e-mail, nothing stored in
   await guest.close();
 });
 
+test("@supabase no page scrolls sideways on a phone", async ({ browser }) => {
+  test.setTimeout(120_000);
+  for (const [who, paths] of [
+    [trainer, ["/dashboard", "/students", "/students?view=active&ordem=recent", "/schedule", "/workouts", "/reports", "/settings", planUrl]],
+    [student, ["/dashboard", "/training", "/meals", "/progress", "/hydration", "/assistant", "/settings"]],
+  ] as const) {
+    const p = await newPage(browser, "mobile");
+    await login(p, who.email, who.password);
+    for (const path of paths) {
+      await p.goto(path);
+      await p.waitForLoadState("networkidle");
+      const overflow = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(overflow, `${path} is wider than the screen`).toBeLessThanOrEqual(0);
+    }
+    await p.context().close();
+  }
+});
+
 test("@supabase a student deletes their account", async ({ browser, page }) => {
   const studentPage = await newPage(browser, "mobile");
   await login(studentPage, student.email, student.password);

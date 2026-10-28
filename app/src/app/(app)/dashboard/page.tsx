@@ -25,8 +25,8 @@ function DashboardSkeleton() {
   return (
     <div role="status" className="mx-auto grid w-full max-w-3xl gap-8" aria-busy="true" aria-label="Carregando painel">
       <div className="h-12 w-56 animate-pulse rounded-xl bg-muted" />
-      <div className="h-64 animate-pulse rounded-3xl bg-muted" />
-      <div className="h-48 animate-pulse rounded-3xl bg-muted" />
+      <div className="h-64 animate-pulse rounded-2xl bg-muted" />
+      <div className="h-48 animate-pulse rounded-2xl bg-muted" />
     </div>
   );
 }

@@ -32,7 +32,7 @@ export function WeeklyWorkoutsChart({ weeks, period }: { weeks: { week: string; 
               ) : null
             }
           />
-          <Bar dataKey="count" fill="var(--chart-2)" maxBarSize={24} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="count" fill="var(--meter-fill)" maxBarSize={24} radius={[4, 4, 0, 0]} isAnimationActive={false} />
         </BarChart>
       )}
       <ChartTable caption="Treinos por semana" headers={["Semana de", "Treinos"]} rows={[...weeks].reverse().map((w) => [formatDate(w.week), String(w.count)])} />

@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { FoodForm } from "@/components/nutrition/food-form";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,11 +37,8 @@ async function FoodContent({ params }: Pick<PageProps<"/foods/[foodId]">, "param
 export default function FoodPage({ params }: PageProps<"/foods/[foodId]">) {
   return (
     <div className="grid max-w-3xl gap-6">
-      <Link href="/foods" className="inline-flex w-fit items-center gap-1 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50">
-        <ArrowLeft className="size-4" aria-hidden />
-        Alimentos
-      </Link>
-      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando alimento" />}>
+      <BackLink href="/foods">Alimentos</BackLink>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-2xl bg-muted" aria-label="Carregando alimento" />}>
         <FoodContent params={params} />
       </Suspense>
     </div>

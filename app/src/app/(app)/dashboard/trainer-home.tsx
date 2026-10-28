@@ -3,6 +3,7 @@ import { CalendarDays, ChartNoAxesCombined, ChevronRight, CircleAlert, Dumbbell,
 import { KpiCard } from "@/components/brand-ui/kpi-card";
 import { EmptyState } from "@/components/empty-state";
 import { type OnboardingStep, OnboardingChecklist } from "@/components/onboarding-checklist";
+import { PageHeader } from "@/components/page-header";
 import { WeeklyWorkoutsChart } from "@/components/progress/weekly-workouts-chart";
 import { buttonVariants } from "@/components/ui/button";
 import type { CurrentUser } from "@/lib/auth/dal";
@@ -96,17 +97,17 @@ export async function TrainerHome({ user, period }: { user: CurrentUser; period:
 
   const date = longToday.format(new Date());
   const header = (summary: string) => (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div className="grid gap-1">
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{date}</p>
-        <h1 className="font-heading text-3xl font-extrabold tracking-tight sm:text-4xl">Olá, {firstName(user.fullName)}</h1>
-        <p className="text-sm text-muted-foreground sm:text-base">{summary}</p>
-      </div>
-      <Link href="/students/invite" className={buttonVariants({ size: "lg", className: "w-full sm:w-auto" })}>
-        <UserPlus aria-hidden />
-        Convidar aluno
-      </Link>
-    </div>
+    <PageHeader
+      eyebrow={date}
+      title={`Olá, ${firstName(user.fullName)}`}
+      description={summary}
+      actions={
+        <Link href="/students/invite" className={buttonVariants({ size: "lg", className: "w-full sm:w-auto" })}>
+          <UserPlus aria-hidden />
+          Convidar aluno
+        </Link>
+      }
+    />
   );
 
   if (students.length === 0) {
@@ -193,7 +194,7 @@ export async function TrainerHome({ user, period }: { user: CurrentUser; period:
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
         {/* First in reading order: on phones, today's agenda and follow-ups come before the history. */}
         <div className="grid content-start gap-8 lg:col-start-2 lg:row-start-1">
-          <section aria-labelledby="today-agenda-title" className="grid gap-3 rounded-3xl border bg-card p-5">
+          <section aria-labelledby="today-agenda-title" className="grid gap-3 surface p-5">
             <SectionTitle id="today-agenda-title" title="Agenda de hoje" href="/schedule" linkLabel="Abrir agenda" />
             {todays.length === 0 ? (
               <div className="grid gap-3">
@@ -235,7 +236,7 @@ export async function TrainerHome({ user, period }: { user: CurrentUser; period:
               <ul className="grid gap-2">
                 {attention.slice(0, 6).map((item, i) => (
                   <li key={`${item.studentId}-${i}`}>
-                    <Link href={item.href} className="flex items-center gap-3 rounded-2xl border bg-card p-3 pr-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50">
+                    <Link href={item.href} className="flex items-center gap-3 surface-row p-3 pr-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50">
                       <span className="grid min-w-0 flex-1">
                         <span className="truncate font-semibold">{item.studentName}</span>
                         <span className="text-sm text-muted-foreground">{item.reason}</span>
@@ -259,7 +260,7 @@ export async function TrainerHome({ user, period }: { user: CurrentUser; period:
           </section>
         </div>
         <div className="grid content-start gap-8 lg:col-start-1 lg:row-start-1">
-          <section aria-label="Gráfico de treinos" className="rounded-3xl border bg-card p-5">
+          <section aria-label="Gráfico de treinos" className="surface p-5">
             <WeeklyWorkoutsChart weeks={chart} />
           </section>
 
@@ -273,7 +274,7 @@ export async function TrainerHome({ user, period }: { user: CurrentUser; period:
                   <li key={log.id}>
                     <Link
                       href={`/students/${log.studentId}/logs/${log.id}`}
-                      className="flex items-center gap-3 rounded-2xl border bg-card p-3 pr-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
+                      className="flex items-center gap-3 surface-row p-3 pr-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
                     >
                       <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold" aria-hidden>
                         {initials(log.studentName)}

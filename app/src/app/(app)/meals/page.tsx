@@ -26,7 +26,7 @@ async function MealsContent() {
       {plans.map((plan) => (
         <section key={plan.id} aria-labelledby={`plan-${plan.id}`} className="grid gap-4">
           <h2 id={`plan-${plan.id}`} className="font-heading text-xl font-semibold">{plan.name}</h2>
-          {plan.notes && <p className="rounded-xl border bg-card p-4 text-sm whitespace-pre-line">{plan.notes}</p>}
+          {plan.notes && <p className="surface p-4 text-sm whitespace-pre-line">{plan.notes}</p>}
           <Card className="py-5 [--card-spacing:--spacing(5)]">
             <CardContent className="grid gap-4">
               <NutrientSummary totals={plan.totals} label="Total diário estimado" />
@@ -65,7 +65,7 @@ export default function MealsPage() {
   return (
     <div className="grid max-w-3xl gap-8">
       <PageHeader title="Minha dieta" description="Refeições, quantidades e estimativas do seu plano alimentar." />
-      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando plano alimentar" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-2xl bg-muted" aria-label="Carregando plano alimentar" />}>
         <MealsContent />
       </Suspense>
     </div>

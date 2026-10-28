@@ -41,7 +41,7 @@ function AppointmentCard({ appointment, students }: { appointment: Appointment; 
           type="button"
           aria-label={`${start} às ${end}, ${appointment.studentName}, ${APPOINTMENT_STATUS_LABELS[appointment.status]}`}
           className={cn(
-            "grid w-full gap-1.5 rounded-xl border bg-card p-3 text-left outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50",
+            "grid w-full gap-1.5 surface-row p-3 text-left outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50",
             appointment.status === "scheduled" && "border-l-4 border-l-brand",
             inactive && "opacity-70",
           )}
@@ -179,7 +179,7 @@ async function ScheduleContent({ searchParams }: Pick<PageProps<"/schedule">, "s
 
 export default function SchedulePage({ searchParams }: PageProps<"/schedule">) {
   return (
-    <Suspense fallback={<div role="status" aria-label="Carregando agenda" className="h-96 animate-pulse rounded-3xl bg-muted" />}>
+    <Suspense fallback={<div role="status" aria-label="Carregando agenda" className="h-96 animate-pulse rounded-2xl bg-muted" />}>
       <ScheduleContent searchParams={searchParams} />
     </Suspense>
   );

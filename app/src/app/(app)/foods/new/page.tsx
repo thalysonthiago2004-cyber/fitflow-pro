@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
-import { ArrowLeft } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { FoodForm } from "@/components/nutrition/food-form";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,10 +17,7 @@ async function AuthorizedForm() {
 export default function NewFoodPage() {
   return (
     <div className="grid max-w-3xl gap-8">
-      <Link href="/foods" className="inline-flex w-fit items-center gap-1 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50">
-        <ArrowLeft className="size-4" aria-hidden />
-        Alimentos
-      </Link>
+      <BackLink href="/foods">Alimentos</BackLink>
       <PageHeader title="Novo alimento" description="Copie os valores do rótulo ou de uma tabela de composição e informe a fonte." />
       <Card className="py-6 [--card-spacing:--spacing(6)]">
         <CardContent>

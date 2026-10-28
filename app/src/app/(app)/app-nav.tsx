@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { WorkspaceRole } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
-import { type NavKey, navItemsFor } from "./nav-items";
+import { NAV_GROUP_LABELS, type NavGroup, type NavItem, type NavKey, navItemsFor } from "./nav-items";
 
 // Icons live on the client side: components cannot be passed from the server.
 const ICONS: Record<NavKey, LucideIcon> = {
@@ -39,43 +39,71 @@ export function AppNav({ variant, role }: AppNavProps) {
   const isSidebar = variant === "sidebar";
   const items = navItemsFor(role, variant);
 
+  const renderItem = ({ key, href, label }: NavItem) => {
+    // Short labels keep five tabs legible on 320 px screens; the full name stays accessible.
+    const Icon = ICONS[key];
+    const section = isSidebar ? [href] : [href, ...(MOBILE_ALIASES[key] ?? [])];
+    const active = section.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+    return (
+      <li key={key}>
+        <Link
+          href={href}
+          aria-current={active ? "page" : undefined}
+          aria-label={!isSidebar && SHORT_LABELS[key] ? label : undefined}
+          title={isSidebar ? label : undefined}
+          className={cn(
+            "relative flex items-center font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+            isSidebar
+              ? "h-11 gap-3 rounded-xl px-3 text-sm sidebar-collapsed:justify-center sidebar-collapsed:px-0 text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-semibold aria-[current=page]:text-sidebar-foreground before:absolute before:top-2.5 before:bottom-2.5 before:left-0 before:w-1 before:rounded-full before:bg-brand before:opacity-0 aria-[current=page]:before:opacity-100"
+              : "h-16 flex-col justify-center gap-1 rounded-xl text-[11px] text-muted-foreground aria-[current=page]:font-semibold aria-[current=page]:text-foreground dark:aria-[current=page]:text-brand before:absolute before:top-0 before:h-0.5 before:w-8 before:rounded-full before:bg-brand before:opacity-0 aria-[current=page]:before:opacity-100 dark:before:hidden",
+          )}
+        >
+          <Icon
+            className={cn(
+              "size-5 shrink-0",
+              isSidebar && active && "dark:text-brand",
+            )}
+            aria-hidden
+          />
+          {isSidebar ? <span className="truncate sidebar-collapsed:sr-only">{label}</span> : <span className="max-w-full truncate px-0.5">{SHORT_LABELS[key] ?? label}</span>}
+        </Link>
+      </li>
+    );
+  };
+
+  if (!isSidebar) {
+    return (
+      <ul className="grid" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
+        {items.map(renderItem)}
+      </ul>
+    );
+  }
+
+  // Sections in a fixed order; a collapsed sidebar shows a thin divider instead of the title.
+  const groups = (["daily", "content", "tracking", "insights", "more"] as NavGroup[])
+    .map((group) => ({ group, items: items.filter((i) => i.group === group) }))
+    .filter((g) => g.items.length > 0);
   return (
-    <ul
-      className={cn(isSidebar ? "grid gap-1" : "grid")}
-      style={isSidebar ? undefined : { gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
-    >
-      {items.map(({ key, href, label }) => {
-        // Short labels keep five tabs legible on 320 px screens; the full name stays accessible.
-        const Icon = ICONS[key];
-        const section = isSidebar ? [href] : [href, ...(MOBILE_ALIASES[key] ?? [])];
-        const active = section.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+    <div className="flex min-h-full flex-col gap-4">
+      {groups.map(({ group, items: list }, index) => {
+        const title = role ? (group === "daily" && role === "student" ? "Hoje" : NAV_GROUP_LABELS[group]) : null;
         return (
-          <li key={key}>
-            <Link
-              href={href}
-              aria-current={active ? "page" : undefined}
-              aria-label={!isSidebar && SHORT_LABELS[key] ? label : undefined}
-              title={isSidebar ? label : undefined}
-              className={cn(
-                "relative flex items-center font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-                isSidebar
-                  ? "h-11 gap-3 rounded-xl px-3 text-sm sidebar-collapsed:justify-center sidebar-collapsed:px-0 text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-semibold aria-[current=page]:text-sidebar-foreground before:absolute before:top-2.5 before:bottom-2.5 before:left-0 before:w-1 before:rounded-full before:bg-brand before:opacity-0 aria-[current=page]:before:opacity-100"
-                  : "h-16 flex-col justify-center gap-1 rounded-xl text-[11px] text-muted-foreground aria-[current=page]:font-semibold aria-[current=page]:text-foreground dark:aria-[current=page]:text-brand before:absolute before:top-0 before:h-0.5 before:w-8 before:rounded-full before:bg-brand before:opacity-0 aria-[current=page]:before:opacity-100 dark:before:hidden",
-              )}
-            >
-              <Icon
-                className={cn(
-                  "size-5 shrink-0",
-                  isSidebar && active && "dark:text-brand",
-                )}
-                aria-hidden
-              />
-              {isSidebar ? <span className="truncate sidebar-collapsed:sr-only">{label}</span> : <span className="max-w-full truncate px-0.5">{SHORT_LABELS[key] ?? label}</span>}
-            </Link>
-          </li>
+          <div key={group} className={cn(group === "more" && "mt-auto border-t border-sidebar-border pt-3")}>
+            {title && (
+              <>
+                <p id={`nav-${group}`} className="px-3 pb-1.5 text-[11px] font-semibold tracking-wide text-sidebar-foreground/50 uppercase sidebar-collapsed:sr-only">
+                  {title}
+                </p>
+                {index > 0 && <div className="mx-3 mb-2 hidden h-px bg-sidebar-border sidebar-collapsed:block" aria-hidden />}
+              </>
+            )}
+            <ul className="grid gap-1" aria-labelledby={title ? `nav-${group}` : undefined}>
+              {list.map(renderItem)}
+            </ul>
+          </div>
         );
       })}
-    </ul>
+    </div>
   );
 }
 

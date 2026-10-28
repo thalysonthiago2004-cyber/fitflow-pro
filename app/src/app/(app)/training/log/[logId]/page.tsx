@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { PageHeader } from "@/components/page-header";
 import { LogView } from "@/components/workouts/log-view";
 import { WorkoutComments } from "@/components/workouts/workout-comments";
@@ -44,11 +43,8 @@ async function LogContent({ params }: Pick<PageProps<"/training/log/[logId]">, "
 export default function TrainingLogPage({ params }: PageProps<"/training/log/[logId]">) {
   return (
     <div className="grid max-w-3xl gap-6">
-      <Link href="/training" className="inline-flex w-fit items-center gap-1 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50">
-        <ArrowLeft className="size-4" aria-hidden />
-        Meus treinos
-      </Link>
-      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando treino" />}>
+      <BackLink href="/training">Meus treinos</BackLink>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-2xl bg-muted" aria-label="Carregando treino" />}>
         <LogContent params={params} />
       </Suspense>
     </div>

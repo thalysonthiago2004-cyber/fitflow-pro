@@ -57,7 +57,7 @@ export function WeekChart({ days, goalMl, title = "Últimos 7 dias" }: { days: D
                   onBlur={() => setActive(null)}
                 >
                   <span
-                    className="absolute bottom-0 w-full max-w-6 rounded-t-[4px] bg-chart-2 transition-opacity group-hover:opacity-80 motion-reduce:transition-none"
+                    className="absolute bottom-0 w-full max-w-6 rounded-t-[4px] bg-meter transition-opacity group-hover:opacity-80 motion-reduce:transition-none"
                     style={{ height: Math.max(day.totalMl > 0 ? 2 : 0, scale(day.totalMl)) }}
                     aria-hidden
                   />

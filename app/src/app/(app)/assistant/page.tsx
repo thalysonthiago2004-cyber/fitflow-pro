@@ -24,7 +24,7 @@ export default function AssistantPage({ searchParams }: PageProps<"/assistant">)
   return (
     <div className="grid max-w-3xl gap-6">
       <PageHeader title="Assistente" description="Tire dúvidas sobre treinos e sobre o app e veja vídeos dos exercícios." />
-      <Suspense fallback={<div role="status" className="h-72 animate-pulse rounded-xl bg-muted" aria-label="Carregando assistente" />}>
+      <Suspense fallback={<div role="status" className="h-72 animate-pulse rounded-2xl bg-muted" aria-label="Carregando assistente" />}>
         <Content searchParams={searchParams} />
       </Suspense>
     </div>

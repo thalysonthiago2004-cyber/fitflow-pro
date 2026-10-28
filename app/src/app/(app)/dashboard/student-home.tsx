@@ -56,7 +56,7 @@ function sessionStats(session: SessionDetail) {
 
 function HeroShell({ children, highlight = false }: { children: React.ReactNode; highlight?: boolean }) {
   return (
-    <div className={cn("relative isolate overflow-hidden rounded-3xl border bg-card p-5 sm:p-7", highlight && "bg-brand-glow dark:glow-brand")}>
+    <div className={cn("relative isolate overflow-hidden surface-hero p-5 sm:p-7", highlight && "bg-brand-glow dark:glow-brand")}>
       <span className="pointer-events-none absolute inset-0 -z-10 bg-tech-grid" aria-hidden />
       {children}
     </div>
@@ -139,7 +139,7 @@ function dayDescription(day: WeekDay) {
 
 function WeekStrip({ days, done, planned }: { days: WeekDay[]; done: number; planned: number }) {
   return (
-    <section aria-labelledby="week-title" className="grid gap-4 rounded-3xl border bg-card p-5">
+    <section aria-labelledby="week-title" className="grid gap-4 surface p-5">
       <div className="flex items-baseline justify-between gap-3">
         <h2 id="week-title" className="font-heading text-lg font-bold">Sua semana</h2>
         <p className="text-sm text-muted-foreground tabular-nums">
@@ -184,7 +184,7 @@ function WeekStrip({ days, done, planned }: { days: WeekDay[]; done: number; pla
 
 function Tile({ href, icon: Icon, label, value, detail }: { href: string; icon: typeof Timer; label: string; value: string; detail?: string }) {
   return (
-    <Link href={href} className="group grid gap-3 rounded-3xl border bg-card p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50">
+    <Link href={href} className="group grid gap-3 surface p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50">
       <span className="flex items-center justify-between">
         <Icon className="size-5 text-muted-foreground" aria-hidden />
         <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
@@ -206,7 +206,7 @@ function NextSession({ appointment, today }: { appointment: { startsAt: string; 
   const date = localDate(appointment.startsAt);
   const day = date === today ? "Hoje" : date === addDays(today, 1) ? "Amanhã" : sessionDay.format(new Date(appointment.startsAt));
   return (
-    <section aria-labelledby="next-session-title" className="flex items-center gap-4 rounded-3xl border bg-card p-4 sm:p-5">
+    <section aria-labelledby="next-session-title" className="flex items-center gap-4 surface p-4 sm:p-5">
       <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-muted" aria-hidden>
         <CalendarClock className="size-5" />
       </span>
@@ -293,7 +293,7 @@ export async function StudentHome({ user }: { user: CurrentUser }) {
     streak > 0 ? (
       <div
         role="img"
-        className="flex shrink-0 items-center gap-2 rounded-2xl border bg-card px-3 py-2"
+        className="flex shrink-0 items-center gap-2 surface px-3 py-2"
         aria-label={`${streak} ${streak === 1 ? "semana" : "semanas"} seguidas com treino`}
       >
         <Flame className="size-5 dark:text-brand" aria-hidden />
@@ -331,7 +331,7 @@ export async function StudentHome({ user }: { user: CurrentUser }) {
               <li key={s.id}>
                 <Link
                   href={`/training/sessions/${s.id}`}
-                  className="flex items-center gap-3 rounded-2xl border bg-card p-3 pr-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
+                  className="flex items-center gap-3 surface-row p-3 pr-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
                   <Play className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                   <span className="min-w-0 flex-1 truncate font-semibold">{s.name}</span>
@@ -349,7 +349,7 @@ export async function StudentHome({ user }: { user: CurrentUser }) {
       {!questionnaire && (
         <Link
           href="/anamnese"
-          className="flex items-center gap-4 rounded-3xl border border-warning/30 bg-warning/10 p-4 outline-none hover:bg-warning/15 focus-visible:ring-3 focus-visible:ring-ring/50 sm:p-5"
+          className="flex items-center gap-4 rounded-2xl border border-warning/30 bg-warning/10 p-4 outline-none hover:bg-warning/15 focus-visible:ring-3 focus-visible:ring-ring/50 sm:p-5"
         >
           <HeartPulse className="size-6 shrink-0 text-warning" aria-hidden />
           <span className="grid min-w-0 flex-1">
@@ -362,7 +362,7 @@ export async function StudentHome({ user }: { user: CurrentUser }) {
 
       {sessions.length > 0 && <WeekStrip days={week} done={weekDone} planned={weekPlanned} />}
 
-      <section aria-labelledby="today-title" className="grid gap-5 rounded-3xl border bg-card p-5">
+      <section aria-labelledby="today-title" className="grid gap-5 surface p-5">
         <div className="flex items-center justify-between gap-3">
           <h2 id="today-title" className="font-heading text-lg font-bold">Progresso de hoje</h2>
           <Link href="/hydration" className="rounded-full px-2 py-1 text-sm font-semibold outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 dark:text-brand">
@@ -401,7 +401,7 @@ export async function StudentHome({ user }: { user: CurrentUser }) {
         />
       </div>
 
-      <section aria-labelledby="ask-title" className="relative isolate grid gap-4 overflow-hidden rounded-3xl border bg-card p-5">
+      <section aria-labelledby="ask-title" className="relative isolate grid gap-4 overflow-hidden surface p-5">
         <span className="pointer-events-none absolute inset-0 -z-10 bg-tech-grid" aria-hidden />
         <div className="flex items-center gap-3">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground dark:bg-brand/15 dark:text-brand" aria-hidden>
@@ -426,7 +426,7 @@ export async function StudentHome({ user }: { user: CurrentUser }) {
         </ul>
       </section>
 
-      <section aria-label="Seu personal" className="flex items-center gap-3 rounded-3xl border bg-card p-3 pr-4">
+      <section aria-label="Seu personal" className="flex items-center gap-3 surface p-3 pr-4">
         <UserAvatar name={trainer?.fullName ?? user.workspace.name} src={avatarUrl(trainer?.avatarPath ?? null)} className="size-12 text-sm" />
         <div className="grid min-w-0 flex-1">
           <span className="text-xs text-muted-foreground">Seu personal</span>

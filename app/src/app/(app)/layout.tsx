@@ -60,7 +60,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
             </Link>
             <SidebarToggle />
           </div>
-          <nav aria-label="Navegação principal" className="flex-1">
+          <nav aria-label="Navegação principal" className="-mx-1 flex-1 overflow-y-auto px-1 pb-3">
             <Suspense fallback={<AppNavSkeleton variant="sidebar" />}>
               <RoleNav variant="sidebar" />
             </Suspense>

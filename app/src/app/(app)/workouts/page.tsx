@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ChevronRight, ClipboardList, Dumbbell, Plus, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { normalize } from "@/lib/text";
+import { ChipRow } from "@/components/chip-row";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -81,7 +82,7 @@ async function PlansContent({ searchParams }: Pick<PageProps<"/workouts">, "sear
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input id="plan-search" name="q" type="search" defaultValue={query} placeholder="Buscar plano ou aluno" className="pl-9" />
         </form>
-        <nav aria-label="Ordenar planos" className="flex flex-wrap items-center gap-1 text-sm">
+        <ChipRow label="Ordenar planos" className="text-sm">
           <span className="mr-1 text-muted-foreground">Ordenar:</span>
           {SORTS.filter((s) => view !== "templates" || s.key !== "student").map(({ key, label }) => (
             <Link
@@ -93,7 +94,7 @@ async function PlansContent({ searchParams }: Pick<PageProps<"/workouts">, "sear
               {label}
             </Link>
           ))}
-        </nav>
+        </ChipRow>
       </div>
 
       {visible.length === 0 && query ? (
@@ -129,7 +130,7 @@ async function PlansContent({ searchParams }: Pick<PageProps<"/workouts">, "sear
             <li key={plan.id}>
               <Link
                 href={`/workouts/${plan.id}`}
-                className="flex items-center gap-3 rounded-xl border bg-card p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="flex items-center gap-3 surface-row p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
               >
                 <div className="grid min-w-0 flex-1 gap-1">
                   <p className="truncate font-medium">{plan.name}</p>
@@ -164,7 +165,7 @@ export default function WorkoutsPage({ searchParams }: PageProps<"/workouts">) {
           </>
         }
       />
-      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando planos" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-2xl bg-muted" aria-label="Carregando planos" />}>
         <PlansContent searchParams={searchParams} />
       </Suspense>
     </div>

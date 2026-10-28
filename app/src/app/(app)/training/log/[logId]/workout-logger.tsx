@@ -232,7 +232,7 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
             const item = block[0];
             const exerciseIndex = log.exercises.indexOf(item);
             return (
-              <li key={item.id} className="grid gap-4 rounded-3xl border bg-card p-4 sm:p-5">
+              <li key={item.id} className="grid gap-4 surface p-4 sm:p-5">
                 <div className="grid gap-1">
                   <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                     {item.kind === "cardio" && <HeartPulse className="size-3.5" aria-hidden />}
@@ -279,7 +279,7 @@ export function WorkoutLogger({ log }: { log: LogDetail }) {
           const rounds = Math.max(...group.map((i) => i.sets));
           const groupRest = group.at(-1)!.restSeconds;
           return (
-            <li key={group[0].id} className="grid gap-4 rounded-3xl border-2 border-foreground/15 bg-card p-4 sm:p-5">
+            <li key={group[0].id} className="grid gap-4 rounded-2xl border-2 border-foreground/15 bg-card p-4 sm:p-5">
               <div className="grid gap-1">
                 <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <Layers className="size-3.5" aria-hidden />
@@ -452,7 +452,7 @@ function FinishWorkout({ logId, done, planned, unit, pendingSaves }: { logId: st
   const [state, action, pending] = useActionState(finishWorkout.bind(null, logId), initialFormState);
 
   return (
-    <section aria-labelledby="finish-title" className="grid gap-4 rounded-xl border bg-card p-4">
+    <section aria-labelledby="finish-title" className="grid gap-4 surface p-4">
       <h2 id="finish-title" className="font-heading text-lg font-semibold">Finalizar treino</h2>
       <form action={action} className="grid gap-4" noValidate>
         <FormMessage state={state} />

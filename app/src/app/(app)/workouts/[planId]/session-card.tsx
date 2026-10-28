@@ -57,7 +57,7 @@ export function SessionCard({ session, index, total, exercises }: SessionCardPro
   const headingId = `session-${session.id}-title`;
 
   return (
-    <section aria-labelledby={headingId} className="grid gap-4 rounded-xl border bg-card p-4 sm:p-6">
+    <section aria-labelledby={headingId} className="grid gap-4 surface p-4 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-0.5">
           <h3 id={headingId} className="font-heading text-lg font-semibold">{session.name}</h3>

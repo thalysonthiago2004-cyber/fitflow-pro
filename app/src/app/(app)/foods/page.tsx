@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Apple, ArrowLeft, ChevronRight, Plus, Search, Download } from "lucide-react";
+import { Apple, ChevronRight, Plus, Search, Download } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
@@ -39,7 +40,7 @@ async function FoodsContent({ searchParams }: Pick<PageProps<"/foods">, "searchP
         <ul className="grid gap-2 sm:grid-cols-2">
           {visible.map((food) => (
             <li key={food.id}>
-              <Link href={`/foods/${food.id}`} className="flex items-center gap-3 rounded-xl border bg-card p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50">
+              <Link href={`/foods/${food.id}`} className="flex items-center gap-3 surface-row p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50">
                 <div className="grid min-w-0 flex-1 gap-0.5">
                   <p className="truncate font-medium">{food.name}</p>
                   <p className="truncate text-sm text-muted-foreground">
@@ -60,10 +61,7 @@ async function FoodsContent({ searchParams }: Pick<PageProps<"/foods">, "searchP
 export default function FoodsPage({ searchParams }: PageProps<"/foods">) {
   return (
     <div className="grid gap-6">
-      <Link href="/nutrition" className="inline-flex w-fit items-center gap-1 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 lg:hidden">
-        <ArrowLeft className="size-4" aria-hidden />
-        Nutrição
-      </Link>
+      <BackLink href="/nutrition" className="lg:hidden">Nutrição</BackLink>
       <PageHeader
         title="Alimentos"
         description="Informação nutricional por 100 g ou 100 ml, sempre com a fonte."
@@ -74,7 +72,7 @@ export default function FoodsPage({ searchParams }: PageProps<"/foods">) {
           </>
         }
       />
-      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando alimentos" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-2xl bg-muted" aria-label="Carregando alimentos" />}>
         <FoodsContent searchParams={searchParams} />
       </Suspense>
     </div>

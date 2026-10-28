@@ -118,7 +118,7 @@ export default function SettingsPage() {
   return (
     <div className="grid gap-8">
       <PageHeader title="Configurações" description="Atualize seu perfil e as preferências da conta." />
-      <Suspense fallback={<div role="status" className="h-96 max-w-3xl animate-pulse rounded-xl bg-muted" aria-label="Carregando" />}>
+      <Suspense fallback={<div role="status" className="h-96 max-w-3xl animate-pulse rounded-2xl bg-muted" aria-label="Carregando" />}>
         <SettingsContent />
       </Suspense>
     </div>

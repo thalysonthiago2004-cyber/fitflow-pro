@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
-import { ArrowLeft } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireStaff } from "@/lib/auth/dal";
@@ -18,10 +17,7 @@ async function AuthorizedForm() {
 export default function NewExercisePage() {
   return (
     <div className="grid max-w-2xl gap-8">
-      <Link href="/exercises" className="inline-flex w-fit items-center gap-1 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50">
-        <ArrowLeft className="size-4" aria-hidden />
-        Exercícios
-      </Link>
+      <BackLink href="/exercises">Exercícios</BackLink>
       <PageHeader title="Novo exercício" description="Fica disponível só para o seu espaço de trabalho." />
       <Card className="py-6 [--card-spacing:--spacing(6)]">
         <CardContent>

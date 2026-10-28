@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { CalendarCheck, Download, Dumbbell, Target, UserPlus, Users } from "lucide-react";
 import { KpiCard } from "@/components/brand-ui/kpi-card";
+import { ChipRow } from "@/components/chip-row";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { WeeklyWorkoutsChart } from "@/components/progress/weekly-workouts-chart";
@@ -42,7 +43,7 @@ function StudentTable({ rows, range, sort }: { rows: StudentRow[]; range: Report
   return (
     <>
       {/* Desktop and tablet: a sortable table. */}
-      <div className="hidden overflow-x-auto rounded-2xl border bg-card md:block">
+      <div className="hidden overflow-x-auto surface md:block">
         <table className="w-full text-sm">
           <caption className="sr-only">Atividade por aluno no período. Ordenado por {COLUMNS.find((c) => c.key === sort)?.label.toLowerCase()}.</caption>
           <thead>
@@ -94,7 +95,7 @@ function StudentTable({ rows, range, sort }: { rows: StudentRow[]; range: Report
       <ul className="grid gap-2 md:hidden">
         {rows.map((r) => (
           <li key={r.studentId}>
-            <Link href={`/students/${r.studentId}`} className="grid gap-3 rounded-2xl border bg-card p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50">
+            <Link href={`/students/${r.studentId}`} className="grid gap-3 surface-row p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50">
               <span className="flex items-center justify-between gap-2">
                 <span className="truncate font-semibold">{r.name}</span>
                 {r.status === "archived" && <StatusBadge tone="neutral">{STUDENT_STATUS_TEXT.archived}</StatusBadge>}
@@ -149,8 +150,8 @@ async function ReportsContent({ searchParams }: Pick<PageProps<"/reports">, "sea
         }
       />
 
-      <section aria-label="Período" className="grid gap-3 rounded-2xl border bg-card p-4">
-        <nav aria-label="Períodos prontos" className="flex flex-wrap gap-2">
+      <section aria-label="Período" className="grid gap-3 surface p-4">
+        <ChipRow label="Períodos prontos">
           {REPORT_PRESETS.map((p) => (
             <Link
               key={p}
@@ -161,7 +162,7 @@ async function ReportsContent({ searchParams }: Pick<PageProps<"/reports">, "sea
               {PRESET_LABELS[p]}
             </Link>
           ))}
-        </nav>
+        </ChipRow>
         <form action="/reports" className="flex flex-wrap items-end gap-3">
           <div className="grid gap-1.5">
             <Label htmlFor="report-from">De</Label>
@@ -203,7 +204,7 @@ async function ReportsContent({ searchParams }: Pick<PageProps<"/reports">, "sea
             </div>
           </section>
 
-          <section aria-label="Treinos por semana" className="rounded-3xl border bg-card p-5">
+          <section aria-label="Treinos por semana" className="surface p-5">
             <WeeklyWorkoutsChart weeks={weeks} period="no período" />
           </section>
 
@@ -216,7 +217,7 @@ async function ReportsContent({ searchParams }: Pick<PageProps<"/reports">, "sea
               <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">Nenhum aluno ativo nem atividade no período.</p>
             ) : (
               <>
-                <nav aria-label="Ordenar" className="flex flex-wrap gap-2 md:hidden">
+                <ChipRow label="Ordenar" className="md:hidden">
                   {(["workouts", "last", "attendance", "name"] as const).map((key) => (
                     <Link
                       key={key}
@@ -227,13 +228,13 @@ async function ReportsContent({ searchParams }: Pick<PageProps<"/reports">, "sea
                       {{ workouts: "Mais treinos", last: "Treinou por último", attendance: "Presença", name: "Nome" }[key]}
                     </Link>
                   ))}
-                </nav>
+                </ChipRow>
                 <StudentTable rows={sortRows(rows, sort)} range={range} sort={sort} />
               </>
             )}
           </section>
 
-          <details className="rounded-2xl border bg-card p-4 text-sm">
+          <details className="surface p-4 text-sm">
             <summary className="cursor-pointer font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50">Como os números são calculados</summary>
             <dl className="mt-3 grid gap-3 text-muted-foreground">
               <div>
@@ -266,7 +267,7 @@ async function ReportsContent({ searchParams }: Pick<PageProps<"/reports">, "sea
 
 export default function ReportsPage({ searchParams }: PageProps<"/reports">) {
   return (
-    <Suspense fallback={<div role="status" aria-label="Carregando relatórios" className="h-96 animate-pulse rounded-3xl bg-muted" />}>
+    <Suspense fallback={<div role="status" aria-label="Carregando relatórios" className="h-96 animate-pulse rounded-2xl bg-muted" />}>
       <ReportsContent searchParams={searchParams} />
     </Suspense>
   );

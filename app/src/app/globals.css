@@ -29,6 +29,9 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-brand: var(--brand);
+  /* Data marks (bars, lines, meters): lime on dark, near-black on light. */
+  --color-meter: var(--meter-fill);
+  --color-meter-track: var(--meter-track);
   --color-brand-foreground: var(--brand-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
@@ -190,6 +193,20 @@
 
 /* Brand glow: a soft lime halo for the one or two elements per screen that
    carry the main action or metric. Never on body text or every card. */
+/* Surfaces: the only three box shapes in the app.
+   surface-hero — the one main action of a screen (today's workout, sign-in);
+   surface      — cards, panels and sections;
+   surface-row  — clickable rows inside lists. */
+@utility surface-hero {
+  @apply rounded-3xl border bg-card text-card-foreground;
+}
+@utility surface {
+  @apply rounded-2xl border bg-card text-card-foreground;
+}
+@utility surface-row {
+  @apply rounded-xl border bg-card text-card-foreground;
+}
+
 /* Desktop sidebar collapsed to icons: set on <html> before first paint. */
 @custom-variant sidebar-collapsed (&:where([data-sidebar="collapsed"] *));
 

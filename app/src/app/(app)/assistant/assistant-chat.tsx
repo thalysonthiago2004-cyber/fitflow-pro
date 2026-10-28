@@ -158,7 +158,7 @@ export function AssistantChat({ userId, role, firstName, initialQuestion }: Prop
     <div className="grid gap-4">
       <div role="log" aria-label="Conversa com o assistente" aria-busy={pending} className="grid gap-4">
         {turns.length === 0 ? (
-          <div className="grid gap-4 rounded-xl border bg-card p-5">
+          <div className="grid gap-4 surface p-5">
             <div className="flex items-start gap-3">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand/15">
                 <Sparkles className="size-5 text-brand-foreground dark:text-brand" aria-hidden />
@@ -206,7 +206,7 @@ export function AssistantChat({ userId, role, firstName, initialQuestion }: Prop
                 {turn.videos.length > 0 && (
                   <ul className="grid gap-3 sm:grid-cols-2" aria-label="Vídeos encontrados">
                     {turn.videos.map((v) => (
-                      <li key={v.exerciseId} className="grid gap-2 rounded-xl border bg-card p-3">
+                      <li key={v.exerciseId} className="grid gap-2 surface-row p-3">
                         <p className="text-sm font-semibold">{v.name}</p>
                         <ExerciseVideo name={v.name} videoUrl={v.videoUrl} videoSrc={v.videoSrc} />
                       </li>

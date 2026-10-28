@@ -30,7 +30,7 @@ export function LogView({ log, weightKg = null }: { log: LogDetail; weightKg?: n
 
   return (
     <div className="grid gap-6">
-      <dl className="grid grid-cols-2 gap-4 rounded-xl border bg-card p-4 sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-4 surface p-4 sm:grid-cols-4">
         <div className="grid gap-0.5">
           <dt className="text-xs text-muted-foreground">Início</dt>
           <dd className="text-sm font-medium">{formatDateTime(log.startedAt)}</dd>
@@ -65,7 +65,7 @@ export function LogView({ log, weightKg = null }: { log: LogDetail; weightKg?: n
       )}
 
       {log.notes && (
-        <div className="rounded-xl border bg-card p-4">
+        <div className="surface p-4">
           <p className="text-xs text-muted-foreground">Observações do aluno</p>
           <p className="mt-1 text-sm whitespace-pre-line">{log.notes}</p>
         </div>
@@ -86,7 +86,7 @@ export function LogView({ log, weightKg = null }: { log: LogDetail; weightKg?: n
                 ].filter(Boolean).join(" · ")
               : "";
             return (
-              <li key={item.id} className="rounded-xl border bg-card p-4">
+              <li key={item.id} className="surface p-4">
                 <p className="font-medium">{item.exercise.name} <span className="text-sm font-normal text-muted-foreground">· cardio</span></p>
                 <p className="text-sm text-muted-foreground">Prescrito: {formatPrescription(item)}</p>
                 {c ? (
@@ -102,7 +102,7 @@ export function LogView({ log, weightKg = null }: { log: LogDetail; weightKg?: n
             );
           }
           return (
-            <li key={item.id} className="rounded-xl border bg-card p-4">
+            <li key={item.id} className="surface p-4">
               <p className="font-medium">{item.exercise.name}</p>
               <p className="text-sm text-muted-foreground">Prescrito: {formatPrescription(item)}</p>
               {sets.length === 0 ? (

@@ -55,7 +55,7 @@ async function Content({ searchParams }: Pick<PageProps<"/nutrition">, "searchPa
         <ul className="grid gap-2">
           {visible.map((plan) => (
             <li key={plan.id}>
-              <Link href={`/nutrition/${plan.id}`} className="flex items-center gap-3 rounded-xl border bg-card p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50">
+              <Link href={`/nutrition/${plan.id}`} className="flex items-center gap-3 surface-row p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50">
                 <div className="grid min-w-0 flex-1 gap-1">
                   <p className="truncate font-medium">{plan.name}</p>
                   <p className="truncate text-sm text-muted-foreground">{plan.studentName}</p>
@@ -84,7 +84,7 @@ export default function NutritionPage({ searchParams }: PageProps<"/nutrition">)
           </>
         }
       />
-      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando planos" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-2xl bg-muted" aria-label="Carregando planos" />}>
         <Content searchParams={searchParams} />
       </Suspense>
     </div>

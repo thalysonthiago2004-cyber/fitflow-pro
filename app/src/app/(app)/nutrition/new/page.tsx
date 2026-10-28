@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { ArrowLeft, Users } from "lucide-react";
+import { Users } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
@@ -31,12 +32,9 @@ async function Content({ searchParams }: Pick<PageProps<"/nutrition/new">, "sear
 export default function NewMealPlanPage({ searchParams }: PageProps<"/nutrition/new">) {
   return (
     <div className="grid max-w-2xl gap-8">
-      <Link href="/nutrition" className="inline-flex w-fit items-center gap-1 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50">
-        <ArrowLeft className="size-4" aria-hidden />
-        Planos alimentares
-      </Link>
+      <BackLink href="/nutrition">Planos alimentares</BackLink>
       <PageHeader title="Novo plano alimentar" description="Escolha o aluno e dê um nome. Depois você monta as refeições." />
-      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-2xl bg-muted" aria-label="Carregando" />}>
         <Content searchParams={searchParams} />
       </Suspense>
     </div>

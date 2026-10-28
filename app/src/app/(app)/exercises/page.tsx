@@ -69,7 +69,7 @@ async function ExercisesContent({ searchParams }: Pick<PageProps<"/exercises">, 
             <li key={exercise.id}>
               <Link
                 href={`/exercises/${exercise.id}`}
-                className="flex items-center gap-3 rounded-xl border bg-card p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="flex items-center gap-3 surface-row p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
               >
                 <div className="grid min-w-0 flex-1 gap-0.5">
                   <p className="truncate font-medium">{exercise.name}</p>
@@ -101,7 +101,7 @@ export default function ExercisesPage({ searchParams }: PageProps<"/exercises">)
           </Link>
         }
       />
-      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando exercícios" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-2xl bg-muted" aria-label="Carregando exercícios" />}>
         <ExercisesContent searchParams={searchParams} />
       </Suspense>
     </div>

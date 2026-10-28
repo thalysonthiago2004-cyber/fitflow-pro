@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { PageHeader } from "@/components/page-header";
 import { LogView } from "@/components/workouts/log-view";
 import { WorkoutComments } from "@/components/workouts/workout-comments";
@@ -37,11 +36,8 @@ async function LogContent({ params }: Pick<PageProps<"/students/[studentId]/logs
 export default function StudentLogPage({ params }: PageProps<"/students/[studentId]/logs/[logId]">) {
   return (
     <div className="grid max-w-3xl gap-6">
-      <Link href="/students" className="inline-flex w-fit items-center gap-1 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50">
-        <ArrowLeft className="size-4" aria-hidden />
-        Alunos
-      </Link>
-      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando treino" />}>
+      <BackLink href="/students">Alunos</BackLink>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-2xl bg-muted" aria-label="Carregando treino" />}>
         <LogContent params={params} />
       </Suspense>
     </div>

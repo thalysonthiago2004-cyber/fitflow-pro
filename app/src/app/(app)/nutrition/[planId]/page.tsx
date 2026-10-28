@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { NutrientSummary, NutritionDisclaimer } from "@/components/nutrition/nutrient-summary";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -95,11 +95,8 @@ async function Builder({ params }: Pick<PageProps<"/nutrition/[planId]">, "param
 export default function MealPlanPage({ params }: PageProps<"/nutrition/[planId]">) {
   return (
     <div className="grid max-w-4xl gap-6">
-      <Link href="/nutrition" className="inline-flex w-fit items-center gap-1 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50">
-        <ArrowLeft className="size-4" aria-hidden />
-        Planos alimentares
-      </Link>
-      <Suspense fallback={<div role="status" className="h-[32rem] animate-pulse rounded-xl bg-muted" aria-label="Carregando plano" />}>
+      <BackLink href="/nutrition">Planos alimentares</BackLink>
+      <Suspense fallback={<div role="status" className="h-[32rem] animate-pulse rounded-2xl bg-muted" aria-label="Carregando plano" />}>
         <Builder params={params} />
       </Suspense>
     </div>

@@ -7,7 +7,7 @@ import { CommentForm, DeleteCommentButton } from "./comment-form";
 export async function WorkoutComments({ logId, viewerId }: { logId: string; viewerId: string }) {
   const comments = await listComments(logId);
   return (
-    <section aria-labelledby={`comments-${logId}`} className="grid gap-4 rounded-xl border bg-card p-4">
+    <section aria-labelledby={`comments-${logId}`} className="grid gap-4 surface p-4">
       <h2 id={`comments-${logId}`} className="flex items-center gap-2 font-heading text-lg font-semibold">
         <MessageSquare className="size-5" aria-hidden />
         Comentários

@@ -42,7 +42,7 @@ async function Content() {
           <li key={student.userId}>
             <Link
               href={`/students/${student.userId}/progress#avaliacao`}
-              className="flex items-center gap-3 rounded-xl border bg-card p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="flex items-center gap-3 surface-row p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
             >
               <div className="grid min-w-0 flex-1 gap-1">
                 <span className="truncate font-medium">{student.fullName}</span>
@@ -68,7 +68,7 @@ export default function AssessmentsPage() {
         title="Avaliação corporal"
         description="Estimativas rápidas pelas medidas (IMC, % de gordura, massa magra, TMB) e registro dos valores da balança de bioimpedância de cada aluno."
       />
-      <Suspense fallback={<div role="status" className="h-64 animate-pulse rounded-xl bg-muted" aria-label="Carregando alunos" />}>
+      <Suspense fallback={<div role="status" className="h-64 animate-pulse rounded-2xl bg-muted" aria-label="Carregando alunos" />}>
         <Content />
       </Suspense>
     </div>

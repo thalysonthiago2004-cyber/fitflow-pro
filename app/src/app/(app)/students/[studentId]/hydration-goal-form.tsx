@@ -23,7 +23,7 @@ export function HydrationGoalForm({ studentId, goalMl }: { studentId: string; go
         defaultValue={state.values?.liters ?? (goalMl ? formatNumber(goalMl / 1000, 2) : "")}
         errors={state.fieldErrors?.liters}
       />
-      <SubmitButton pending={pending} pendingLabel="Salvando…" variant="secondary" className="sm:mt-7">
+      <SubmitButton pending={pending} pendingLabel="Salvando…" variant="secondary" className="w-fit sm:mt-7">
         Salvar meta
       </SubmitButton>
     </form>

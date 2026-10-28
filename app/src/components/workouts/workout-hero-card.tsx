@@ -22,7 +22,7 @@ export function WorkoutHeroCard({ session, eyebrow, href, cta, inProgress = fals
   return (
     <Link
       href={href}
-      className="group relative isolate block overflow-hidden rounded-3xl border bg-card bg-brand-glow p-5 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:p-6 dark:glow-brand"
+      className="group relative isolate block overflow-hidden surface-hero bg-brand-glow p-5 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:p-6 dark:glow-brand"
     >
       <Dumbbell
         className="pointer-events-none absolute -right-6 -bottom-8 -z-10 size-44 -rotate-12 text-foreground/[0.04] dark:text-brand/[0.07]"

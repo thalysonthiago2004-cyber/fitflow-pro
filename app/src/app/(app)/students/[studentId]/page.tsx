@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft, CalendarPlus, ChevronRight, Plus, TrendingUp, FileText } from "lucide-react";
+import { CalendarPlus, ChevronRight, Plus, TrendingUp, FileText } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -46,7 +47,7 @@ const sessionDay = (iso: string) => dayFormat.format(new Date(iso)).replace(".",
 
 function Stat({ label, value, detail, warn = false }: { label: string; value: string; detail?: string; warn?: boolean }) {
   return (
-    <div className="grid content-start gap-1 rounded-2xl border bg-card p-4">
+    <div className="grid content-start gap-1 surface p-4">
       <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
       <dd className={cn("truncate font-heading text-lg font-bold first-letter:uppercase", warn && "text-warning")}>{value}</dd>
       {detail && <dd className="truncate text-xs text-muted-foreground tabular-nums">{detail}</dd>}
@@ -152,7 +153,7 @@ async function StudentContent({ params }: Pick<PageProps<"/students/[studentId]"
             warn={!activePlan}
           />
         </dl>
-        <dl className="flex flex-wrap gap-x-6 gap-y-2 rounded-2xl border bg-card px-4 py-3">
+        <dl className="flex flex-wrap gap-x-6 gap-y-2 surface px-4 py-3">
           <Fact label="Nível" value={student.experienceLevel ? EXPERIENCE_LEVEL_LABELS[student.experienceLevel] : "Não informado"} />
           <Fact label="Idade" value={student.birthDate ? `${ageFromBirthDate(student.birthDate)} anos` : "Não informada"} />
           <Fact label="Altura" value={student.heightCm !== null ? `${formatNumber(student.heightCm)} cm` : "Não informada"} />
@@ -346,11 +347,8 @@ async function StudentContent({ params }: Pick<PageProps<"/students/[studentId]"
 export default function StudentPage({ params }: PageProps<"/students/[studentId]">) {
   return (
     <div className="grid max-w-4xl gap-6">
-      <Link href="/students" className="inline-flex w-fit items-center gap-1 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50">
-        <ArrowLeft className="size-4" aria-hidden />
-        Alunos
-      </Link>
-      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando aluno" />}>
+      <BackLink href="/students">Alunos</BackLink>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-2xl bg-muted" aria-label="Carregando aluno" />}>
         <StudentContent params={params} />
       </Suspense>
     </div>

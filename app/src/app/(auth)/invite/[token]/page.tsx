@@ -90,7 +90,7 @@ async function InviteContent({ params }: Pick<PageProps<"/invite/[token]">, "par
 
 export default function InvitePage({ params }: PageProps<"/invite/[token]">) {
   return (
-    <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando convite" />}>
+    <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-2xl bg-muted" aria-label="Carregando convite" />}>
       <InviteContent params={params} />
     </Suspense>
   );

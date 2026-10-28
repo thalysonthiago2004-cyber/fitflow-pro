@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ChevronRight, MailPlus, Scale, Search, UserPlus, Users } from "lucide-react";
+import { ChipRow } from "@/components/chip-row";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -120,7 +121,7 @@ async function StudentsContent({ searchParams }: Pick<PageProps<"/students">, "s
       {view !== "invites" && (
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           {view === "active" ? (
-            <nav aria-label="Filtros rápidos" className="flex flex-wrap gap-2">
+            <ChipRow label="Filtros rápidos">
               {ROSTER_FILTERS.map((key) => {
                 const n = filterRoster(inView, key, today).length;
                 return (
@@ -135,11 +136,11 @@ async function StudentsContent({ searchParams }: Pick<PageProps<"/students">, "s
                   </Link>
                 );
               })}
-            </nav>
+            </ChipRow>
           ) : (
             <span />
           )}
-          <nav aria-label="Ordenar alunos" className="flex flex-wrap items-center gap-1 text-sm">
+          <ChipRow label="Ordenar alunos" className="text-sm">
             <span className="mr-1 text-muted-foreground">Ordenar:</span>
             {ROSTER_SORTS.map((key) => (
               <Link
@@ -151,7 +152,7 @@ async function StudentsContent({ searchParams }: Pick<PageProps<"/students">, "s
                 {ROSTER_SORT_LABELS[key]}
               </Link>
             ))}
-          </nav>
+          </ChipRow>
         </div>
       )}
 
@@ -165,7 +166,7 @@ async function StudentsContent({ searchParams }: Pick<PageProps<"/students">, "s
         ) : (
           <ul className="grid gap-3">
             {visibleInvites.map((invite) => (
-              <li key={invite.id} className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+              <li key={invite.id} className="flex flex-col gap-3 surface-row p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="grid min-w-0 gap-0.5">
                   <p className="truncate font-medium">{invite.fullName}</p>
                   <p className="truncate text-sm text-muted-foreground">{invite.email}</p>
@@ -209,7 +210,7 @@ async function StudentsContent({ searchParams }: Pick<PageProps<"/students">, "s
               <li key={student.userId}>
                 <Link
                   href={`/students/${student.userId}`}
-                  className="flex items-center gap-3 rounded-2xl border bg-card p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
+                  className="flex items-center gap-3 surface-row p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
                   <Initials name={student.fullName} />
                   <div className="grid min-w-0 flex-1 gap-0.5">
@@ -227,7 +228,7 @@ async function StudentsContent({ searchParams }: Pick<PageProps<"/students">, "s
               </li>
             ))}
           </ul>
-          <div className="hidden overflow-hidden rounded-2xl border bg-card md:block">
+          <div className="hidden overflow-hidden surface md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -285,7 +286,7 @@ function StudentsSkeleton() {
     <div role="status" className="grid gap-6" aria-busy="true" aria-label="Carregando alunos">
       <div className="h-12 w-80 max-w-full animate-pulse rounded-xl bg-muted" />
       <div className="h-11 max-w-md animate-pulse rounded-lg bg-muted" />
-      <div className="h-64 animate-pulse rounded-xl bg-muted" />
+      <div className="h-64 animate-pulse rounded-2xl bg-muted" />
     </div>
   );
 }

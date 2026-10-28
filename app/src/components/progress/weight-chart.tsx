@@ -59,12 +59,12 @@ export function WeightChart({ points, unit = "kg", title = "Peso", emptyText }: 
         <Line
           type="monotone"
           dataKey="value"
-          stroke="var(--chart-2)"
+          stroke="var(--meter-fill)"
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
-          dot={{ r: 4, fill: "var(--chart-2)", stroke: "var(--card)", strokeWidth: 2 }}
-          activeDot={{ r: 6, fill: "var(--chart-2)", stroke: "var(--card)", strokeWidth: 2 }}
+          dot={{ r: 4, fill: "var(--meter-fill)", stroke: "var(--card)", strokeWidth: 2 }}
+          activeDot={{ r: 6, fill: "var(--meter-fill)", stroke: "var(--card)", strokeWidth: 2 }}
           isAnimationActive={false}
         >
           <LabelList

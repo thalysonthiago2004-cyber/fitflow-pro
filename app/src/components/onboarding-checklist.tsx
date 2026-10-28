@@ -9,7 +9,7 @@ export function OnboardingChecklist({ steps }: { steps: OnboardingStep[] }) {
   const done = steps.filter((s) => s.done).length;
   if (done === steps.length) return null;
   return (
-    <section aria-labelledby="onboarding-title" className="grid gap-4 rounded-3xl border bg-card p-5 sm:p-6">
+    <section aria-labelledby="onboarding-title" className="grid gap-4 surface p-5 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="onboarding-title" className="font-heading text-lg font-bold">Primeiros passos</h2>
         <span className="text-sm text-muted-foreground tabular-nums">{done} de {steps.length} concluídos</span>

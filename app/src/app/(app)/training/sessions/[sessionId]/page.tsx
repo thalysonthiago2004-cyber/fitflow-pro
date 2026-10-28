@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft, ChevronDown, HeartPulse, Layers } from "lucide-react";
+import { ChevronDown, HeartPulse, Layers } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { ExerciseDemo } from "@/components/workouts/exercise-demo";
@@ -33,7 +34,7 @@ async function SessionContent({ params }: Pick<PageProps<"/training/sessions/[se
         <StartWorkoutButton sessionId={session.id} className="sm:justify-self-start" />
       ) : null}
 
-      {plan.notes && <p className="rounded-xl border bg-card p-4 text-sm whitespace-pre-line">{plan.notes}</p>}
+      {plan.notes && <p className="surface p-4 text-sm whitespace-pre-line">{plan.notes}</p>}
 
       <ol className="grid gap-3">
         {groupSupersets(session.exercises).map((block) => {
@@ -61,7 +62,7 @@ async function SessionContent({ params }: Pick<PageProps<"/training/sessions/[se
 
 function ItemCard({ item, index, inGroup }: { item: Prescription; index: number; inGroup: boolean }) {
   return (
-    <li className="grid gap-3 rounded-xl border bg-card p-4">
+    <li className="grid gap-3 surface p-4">
       <div className="flex gap-3">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold tabular-nums" aria-hidden>{index + 1}</span>
         <div className="grid gap-0.5">
@@ -94,11 +95,8 @@ function ItemCard({ item, index, inGroup }: { item: Prescription; index: number;
 export default function TrainingSessionPage({ params }: PageProps<"/training/sessions/[sessionId]">) {
   return (
     <div className="grid max-w-3xl gap-6">
-      <Link href="/training" className="inline-flex w-fit items-center gap-1 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50">
-        <ArrowLeft className="size-4" aria-hidden />
-        Meus treinos
-      </Link>
-      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando treino" />}>
+      <BackLink href="/training">Meus treinos</BackLink>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-2xl bg-muted" aria-label="Carregando treino" />}>
         <SessionContent params={params} />
       </Suspense>
     </div>

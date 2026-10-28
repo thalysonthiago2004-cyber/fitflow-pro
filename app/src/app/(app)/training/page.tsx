@@ -64,7 +64,7 @@ async function TrainingContent() {
                   <li key={session.id}>
                     <Link
                       href={`/training/sessions/${session.id}`}
-                      className="flex h-full items-center gap-3 rounded-2xl border bg-card p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
+                      className="flex h-full items-center gap-3 surface-row p-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
                     >
                       <div className="grid min-w-0 flex-1 gap-1">
                         <div className="flex flex-wrap items-center gap-2">
@@ -119,7 +119,7 @@ export default function TrainingPage() {
   return (
     <div className="grid gap-8">
       <PageHeader title="Meus treinos" description="Seu plano atual e o histórico de treinos." />
-      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-xl bg-muted" aria-label="Carregando treinos" />}>
+      <Suspense fallback={<div role="status" className="h-96 animate-pulse rounded-2xl bg-muted" aria-label="Carregando treinos" />}>
         <TrainingContent />
       </Suspense>
     </div>

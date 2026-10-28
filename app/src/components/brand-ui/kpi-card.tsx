@@ -18,7 +18,7 @@ export function KpiCard({ icon: Icon, label, value, detail, trend, highlight = f
   const down = trend?.value !== null && trend?.value !== undefined && trend.value < 0;
   const TrendIcon = up ? TrendingUp : down ? TrendingDown : Minus;
   return (
-    <div className={cn("grid content-between gap-4 rounded-2xl border bg-card p-4 sm:p-5", highlight && "bg-brand-glow dark:glow-brand")}>
+    <div className={cn("grid content-between gap-4 surface p-4 sm:p-5", highlight && "bg-brand-glow dark:glow-brand")}>
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-medium text-muted-foreground">{label}</span>
         <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
