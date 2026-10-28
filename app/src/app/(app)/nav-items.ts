@@ -2,7 +2,7 @@ import type { WorkspaceRole } from "@/lib/supabase/database.types";
 
 export type NavKey =
   | "dashboard" | "students" | "schedule" | "workouts" | "exercises" | "nutrition" | "foods"
-  | "assessments" | "training" | "meals" | "hydration" | "progress" | "anamnese" | "assistant" | "settings";
+  | "assessments" | "reports" | "training" | "meals" | "hydration" | "progress" | "anamnese" | "assistant" | "settings";
 
 export type NavItem = {
   key: NavKey;
@@ -28,6 +28,8 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "foods", href: "/foods", label: "Alimentos", roles: STAFF, mobile: false },
   // On mobile, reached from the students page.
   { key: "assessments", href: "/assessments", label: "Avaliação", roles: STAFF, mobile: false },
+  // On mobile, reached from the dashboard.
+  { key: "reports", href: "/reports", label: "Relatórios", roles: STAFF, mobile: false },
   { key: "training", href: "/training", label: "Treinos", roles: STUDENT, mobile: true },
   { key: "meals", href: "/meals", label: "Dieta", roles: STUDENT, mobile: true },
   { key: "progress", href: "/progress", label: "Evolução", roles: STUDENT, mobile: true },

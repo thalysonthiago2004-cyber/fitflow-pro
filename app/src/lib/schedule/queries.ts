@@ -16,6 +16,8 @@ export type Appointment = {
   notes: string | null;
 };
 
+const PAGE = 1000;
+
 const COLUMNS = "id, student_id, trainer_id, starts_at, ends_at, status, location, notes, students(email, profiles(full_name))";
 
 type Row = {
@@ -46,15 +48,23 @@ const toAppointment = (r: Row): Appointment => ({
 export async function listAppointments(workspaceId: string, from: string, to: string): Promise<Appointment[]> {
   const { start, end } = dayBounds(from, to);
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("appointments")
-    .select(COLUMNS)
-    .eq("workspace_id", workspaceId)
-    .gte("starts_at", start)
-    .lt("starts_at", end)
-    .order("starts_at");
-  if (error) throw new Error(`Failed to list appointments: ${error.message}`);
-  return (data as Row[]).map(toAppointment);
+  const rows: Row[] = [];
+  // Read in pages: PostgREST caps rows per call and a year of sessions can exceed it.
+  for (let page = 0; page < 20; page++) {
+    const { data, error } = await supabase
+      .from("appointments")
+      .select(COLUMNS)
+      .eq("workspace_id", workspaceId)
+      .gte("starts_at", start)
+      .lt("starts_at", end)
+      .order("starts_at")
+      .order("id")
+      .range(page * PAGE, page * PAGE + PAGE - 1);
+    if (error) throw new Error(`Failed to list appointments: ${error.message}`);
+    rows.push(...(data as Row[]));
+    if (data.length < PAGE) break;
+  }
+  return rows.map(toAppointment);
 }
 
 /** The student's next sessions that have not ended and are still booked. */

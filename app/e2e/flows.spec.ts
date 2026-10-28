@@ -730,7 +730,7 @@ test("@supabase signed-in screens pass automated accessibility checks", async ({
   // Fifteen screens, each fully analysed.
   test.setTimeout(180_000);
   await login(page, trainer.email, trainer.password);
-  for (const path of ["/dashboard", "/schedule", "/students", "/workouts", planUrl, "/exercises", "/assessments", "/foods/taco", "/settings"]) {
+  for (const path of ["/dashboard", "/schedule", "/reports", "/students", "/workouts", planUrl, "/exercises", "/assessments", "/foods/taco", "/settings"]) {
     await expectAccessible(page, path);
   }
   const studentPage = await newPage(browser, "mobile");
@@ -849,6 +849,50 @@ test("@supabase trainer books a session, conflicts are refused and the student s
 
   await studentPage.reload();
   await expect(studentPage.getByRole("region", { name: "Próxima sessão com seu personal" })).toHaveCount(0);
+  await studentPage.context().close();
+});
+
+test("@supabase reports: filters, sorting, CSV export and staff-only access", async ({ browser, page }) => {
+  await login(page, trainer.email, trainer.password);
+  await page.getByRole("navigation", { name: "Navegação principal" }).getByRole("link", { name: "Relatórios" }).first().click();
+  await expect(page.getByRole("heading", { name: "Relatórios", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Resumo do período" })).toBeVisible();
+  const table = page.getByRole("table");
+  const carla = table.getByRole("row", { name: new RegExp(student.name) });
+  await expect(carla).toBeVisible();
+  // The journeys completed workouts today, so the student has at least one.
+  await expect(carla.getByRole("cell").nth(1)).not.toHaveText("0");
+
+  await table.getByRole("link", { name: "Aluno" }).click();
+  await expect(page).toHaveURL(/ordem=name/);
+  await expect(page.getByRole("columnheader", { name: /Aluno/ })).toHaveAttribute("aria-sort", "ascending");
+
+  await page.getByRole("link", { name: "12 meses" }).click();
+  await expect(page).toHaveURL(/periodo=365/);
+  const yesterday = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(Date.now() - 86_400_000));
+  await page.getByLabel("De", { exact: true }).fill(yesterday);
+  await page.getByLabel("Até", { exact: true }).fill(yesterday);
+  await page.getByRole("button", { name: "Aplicar" }).click();
+  await expect(page).toHaveURL(new RegExp(`de=${yesterday}&ate=${yesterday}`));
+  // Nothing was recorded yesterday.
+  await expect(table.getByRole("row", { name: new RegExp(student.name) }).getByRole("cell").nth(1)).toHaveText("0");
+
+  await page.getByRole("link", { name: "30 dias" }).click();
+  await expect(page).toHaveURL(/periodo=30/);
+  await expect(page.getByRole("link", { name: "Exportar CSV" })).toHaveAttribute("href", /periodo=30/);
+  const download = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Exportar CSV" }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/^fitflow-relatorio-\d{4}-\d{2}-\d{2}-a-\d{4}-\d{2}-\d{2}\.csv$/);
+  const csv = (await import("node:fs")).readFileSync((await file.path())!, "utf8");
+  expect(csv.startsWith("\uFEFFAluno;Situação;Treinos concluídos;Treinos por semana;")).toBe(true);
+  expect(csv).toMatch(new RegExp(`\\r\\n${student.name};Ativo;[1-9]`));
+
+  const studentPage = await newPage(browser, "mobile");
+  await login(studentPage, student.email, student.password);
+  await studentPage.goto("/reports");
+  await expect(studentPage).toHaveURL(/\/dashboard$/);
+  expect((await studentPage.request.get("/reports/export")).status()).toBe(403);
   await studentPage.context().close();
 });
 

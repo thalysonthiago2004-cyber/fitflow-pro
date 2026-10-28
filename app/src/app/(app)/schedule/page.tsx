@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { requireStaff } from "@/lib/auth/dal";
-import { addDays, todayISO } from "@/lib/format";
+import { addDays, isCalendarDate, todayISO } from "@/lib/format";
 import { type Appointment, listAppointments } from "@/lib/schedule/queries";
 import { APPOINTMENT_STATUS_LABELS } from "@/lib/schedule/schemas";
 import type { AppointmentStatus } from "@/lib/supabase/database.types";
@@ -24,7 +24,7 @@ const fmt = (date: string) => dayMonth.format(new Date(`${date}T12:00:00Z`)).rep
 const STATUS_DOTS: Record<AppointmentStatus, string> = { scheduled: "bg-info", completed: "bg-success", cancelled: "bg-muted-foreground", no_show: "bg-warning" };
 
 function weekParam(value: unknown): string {
-  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T12:00:00Z`).getTime()) ? value : todayISO();
+  return isCalendarDate(value) ? value : todayISO();
 }
 
 function AppointmentCard({ appointment, students }: { appointment: Appointment; students: { id: string; name: string }[] }) {

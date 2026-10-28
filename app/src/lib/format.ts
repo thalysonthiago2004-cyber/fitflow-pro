@@ -72,6 +72,13 @@ export function formatVolume(ml: number): string {
   return ml < 1000 ? `${formatNumber(ml, 0)} ml` : `${formatNumber(ml / 1000, 2)} L`;
 }
 
+/** A real YYYY-MM-DD calendar date ("2026-02-31" is not: Date would roll it over to March). */
+export function isCalendarDate(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T12:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
 /** Calendar date (YYYY-MM-DD) `offset` days from `iso`. */
 export function addDays(iso: string, offset: number): string {
   const date = new Date(`${iso}T12:00:00Z`);

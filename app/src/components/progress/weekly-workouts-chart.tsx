@@ -9,13 +9,13 @@ const tick = (week: string) => short.format(new Date(`${week}T12:00:00Z`));
 const plural = (n: number) => `${n} ${n === 1 ? "treino" : "treinos"}`;
 
 // Columns ≤24px with a 4px rounded data end and a square baseline.
-export function WeeklyWorkoutsChart({ weeks }: { weeks: { week: string; count: number }[] }) {
+export function WeeklyWorkoutsChart({ weeks, period }: { weeks: { week: string; count: number }[]; /** Overrides "nas últimas N semanas". */ period?: string }) {
   const total = weeks.reduce((s, w) => s + w.count, 0);
   return (
     <figure className="grid gap-3">
       <figcaption className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="font-heading text-base font-semibold">Treinos concluídos por semana</span>
-        <span className="text-sm text-muted-foreground">{plural(total)} nas últimas {weeks.length} semanas</span>
+        <span className="text-sm text-muted-foreground">{plural(total)} {period ?? `nas últimas ${weeks.length} semanas`}</span>
       </figcaption>
       {total === 0 ? (
         <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">Nenhum treino concluído nesse período.</p>

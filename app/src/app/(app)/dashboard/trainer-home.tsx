@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, ChevronRight, CircleAlert, Dumbbell, MapPin, Plus, Target, UserPlus, Users } from "lucide-react";
+import { CalendarDays, ChartNoAxesCombined, ChevronRight, CircleAlert, Dumbbell, MapPin, Plus, Target, UserPlus, Users } from "lucide-react";
 import { KpiCard } from "@/components/brand-ui/kpi-card";
 import { EmptyState } from "@/components/empty-state";
 import { type OnboardingStep, OnboardingChecklist } from "@/components/onboarding-checklist";
@@ -162,7 +162,13 @@ export async function TrainerHome({ user, period }: { user: CurrentUser; period:
           <h2 id="kpi-title" className="font-heading text-lg font-bold">
             Últimos {period} dias
           </h2>
-          <PeriodSwitch period={period} />
+          <div className="flex flex-wrap items-center gap-2">
+            <PeriodSwitch period={period} />
+            <Link href={`/reports?periodo=${period}`} className={buttonVariants({ variant: "ghost" })}>
+              <ChartNoAxesCombined aria-hidden />
+              Relatórios
+            </Link>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <KpiCard icon={Users} label="Alunos ativos" value={numberFormat.format(active.length)} detail={newStudents ? `+${newStudents} ${newStudents === 1 ? "novo" : "novos"} no período` : "Nenhum novo no período"} />

@@ -11,6 +11,7 @@ const LIMITS = {
   avatar: { max: 10, windowSeconds: 3600 },
   exercise_video: { max: 20, windowSeconds: 3600 },
   data_export: { max: 10, windowSeconds: 3600 },
+  report_export: { max: 30, windowSeconds: 3600 },
   push_test: { max: 10, windowSeconds: 3600 },
   taco_import: { max: 20, windowSeconds: 3600 },
   questionnaire: { max: 10, windowSeconds: 3600 },
