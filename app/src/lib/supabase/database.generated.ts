@@ -14,6 +14,70 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointments: {
+        Row: {
+          created_at: string
+          ends_at: string
+          id: string
+          location: string | null
+          notes: string | null
+          starts_at: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          student_id: string
+          trainer_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          ends_at: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          starts_at: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          student_id: string
+          trainer_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          starts_at?: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          student_id?: string
+          trainer_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_workspace_id_student_id_fkey"
+            columns: ["workspace_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["workspace_id", "user_id"]
+          },
+          {
+            foreignKeyName: "appointments_workspace_id_trainer_id_fkey"
+            columns: ["workspace_id", "trainer_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_members"
+            referencedColumns: ["workspace_id", "user_id"]
+          },
+        ]
+      }
       body_measurements: {
         Row: {
           arm_cm: number | null
@@ -1371,13 +1435,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      find_auth_user_by_email: {
-        Args: { p_email: string }
-        Returns: {
-          firebase_uid: string
-          user_id: string
-        }[]
-      }
       accept_invitation: { Args: { p_token: string }; Returns: string }
       check_rate_limit: {
         Args: { p_action: string; p_max: number; p_window_seconds: number }
@@ -1411,6 +1468,13 @@ export type Database = {
       duplicate_workout_plan: {
         Args: { p_name: string; p_plan: string; p_student: string }
         Returns: string
+      }
+      find_auth_user_by_email: {
+        Args: { p_email: string }
+        Returns: {
+          firebase_uid: string
+          user_id: string
+        }[]
       }
       get_invitation: {
         Args: { p_token: string }
@@ -1448,6 +1512,7 @@ export type Database = {
       }
     }
     Enums: {
+      appointment_status: "scheduled" | "completed" | "cancelled" | "no_show"
       cardio_intensity: "light" | "moderate" | "vigorous"
       cardio_mode: "continuous" | "intervals"
       equipment:
@@ -1612,6 +1677,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      appointment_status: ["scheduled", "completed", "cancelled", "no_show"],
       cardio_intensity: ["light", "moderate", "vigorous"],
       cardio_mode: ["continuous", "intervals"],
       equipment: [

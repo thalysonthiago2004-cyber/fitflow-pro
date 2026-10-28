@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { SUPABASE_STUB } from "./harness";
+import { PGLITE_OPTIONS, SUPABASE_STUB } from "./harness";
 
 // Runs the real migrations against an in-process Postgres (PGlite) with a
 // minimal stand-in for the Supabase auth and storage schemas and API roles. This verifies
@@ -56,7 +56,7 @@ async function enrollStudent(studentId: string, trainerId: string) {
 }
 
 beforeAll(async () => {
-  db = new PGlite();
+  db = new PGlite(PGLITE_OPTIONS);
   await db.exec(SUPABASE_STUB);
   for (const file of readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql")).sort()) {
     await db.exec(readFileSync(join(MIGRATIONS_DIR, file), "utf8"));

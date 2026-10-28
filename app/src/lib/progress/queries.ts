@@ -157,6 +157,31 @@ export async function getWorkspaceWeekActivity(workspaceId: string): Promise<{ w
   return { workouts: thisWeek.length, studentsTrained: new Set(thisWeek.map((r) => r.student_id)).size };
 }
 
+const PAGE = 1000;
+
+/** São Paulo dates of every completed workout in a workspace since `since`, read in pages (PostgREST caps rows per call). */
+export async function getWorkspaceCompletions(workspaceId: string, since: string): Promise<{ date: string; studentId: string }[]> {
+  const supabase = await createClient();
+  const rows: { student_id: string; completed_at: string | null }[] = [];
+  for (let page = 0; page < 20; page++) {
+    const { data, error } = await supabase
+      .from("workout_logs")
+      .select("student_id, completed_at")
+      .eq("workspace_id", workspaceId)
+      .not("completed_at", "is", null)
+      .gte("completed_at", `${addDays(since, -1)}T00:00:00Z`)
+      .order("completed_at")
+      .order("id")
+      .range(page * PAGE, page * PAGE + PAGE - 1);
+    if (error) fail("workspace completions", error);
+    rows.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return rows
+    .map((r) => ({ date: saoPauloDate.format(new Date(r.completed_at!)), studentId: r.student_id }))
+    .filter((r) => r.date >= since);
+}
+
 export type BodyProfile = { sex: Sex | null; heightCm: number | null; birthDate: string | null };
 
 /** Sex, height and birth date kept on the student record by staff. */

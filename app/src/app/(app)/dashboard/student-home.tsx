@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  ArrowRight, Check, ChevronRight, Flame, HeartPulse, Layers, MessageCircle, MoonStar, Play, Sparkles, Timer, TrendingUp, Users, Utensils,
+  ArrowRight, CalendarClock, Check, ChevronRight, MapPin, Flame, HeartPulse, Layers, MessageCircle, MoonStar, Play, Sparkles, Timer, TrendingUp, Users, Utensils,
 } from "lucide-react";
 import { ProgressRing } from "@/components/brand-ui/progress-ring";
 import { EmptyState } from "@/components/empty-state";
@@ -9,7 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { UserAvatar } from "@/components/user-avatar";
 import type { CurrentUser } from "@/lib/auth/dal";
 import { SUGGESTIONS } from "@/lib/assistant/suggestions";
-import { formatVolume, todayISO, weekdayToday } from "@/lib/format";
+import { addDays, formatVolume, todayISO, weekdayToday } from "@/lib/format";
 import { getCurrentGoal, getDailyTotals } from "@/lib/hydration/queries";
 import { avatarUrl } from "@/lib/images/urls";
 import { formatKcal } from "@/lib/nutrition/format";
@@ -17,6 +17,8 @@ import { getStudentMealPlans } from "@/lib/nutrition/queries";
 import { whatsappLink } from "@/lib/phone";
 import { weeklyStreak } from "@/lib/progress/calc";
 import { getCompletedWorkoutDates } from "@/lib/progress/queries";
+import { listUpcomingForStudent } from "@/lib/schedule/queries";
+import { localDate, localTime } from "@/lib/schedule/time";
 import { getLatestQuestionnaire } from "@/lib/students/questionnaire-queries";
 import { getTrainer } from "@/lib/students/queries";
 import { MUSCLE_GROUP_LABELS, WEEKDAYS } from "@/lib/workouts/labels";
@@ -196,6 +198,34 @@ function Tile({ href, icon: Icon, label, value, detail }: { href: string; icon: 
   );
 }
 
+// Next booked session ----------------------------------------------------------
+
+const sessionDay = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long", timeZone: "America/Sao_Paulo" });
+
+function NextSession({ appointment, today }: { appointment: { startsAt: string; endsAt: string; location: string | null }; today: string }) {
+  const date = localDate(appointment.startsAt);
+  const day = date === today ? "Hoje" : date === addDays(today, 1) ? "Amanhã" : sessionDay.format(new Date(appointment.startsAt));
+  return (
+    <section aria-labelledby="next-session-title" className="flex items-center gap-4 rounded-3xl border bg-card p-4 sm:p-5">
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-muted" aria-hidden>
+        <CalendarClock className="size-5" />
+      </span>
+      <div className="grid min-w-0">
+        <h2 id="next-session-title" className="text-xs font-medium text-muted-foreground">Próxima sessão com seu personal</h2>
+        <p className="font-heading text-lg font-bold first-letter:uppercase">
+          {day} · <span className="tabular-nums">{localTime(appointment.startsAt)}–{localTime(appointment.endsAt)}</span>
+        </p>
+        {appointment.location && (
+          <p className="flex items-center gap-1 truncate text-sm text-muted-foreground">
+            <MapPin className="size-3.5 shrink-0" aria-hidden />
+            {appointment.location}
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 // Page ------------------------------------------------------------------------
 
 export async function StudentHome({ user }: { user: CurrentUser }) {
@@ -222,7 +252,7 @@ export async function StudentHome({ user }: { user: CurrentUser }) {
     );
   }
 
-  const [trainer, plans, openLog, waterGoal, waterToday, mealPlans, workoutDates, questionnaire] = await Promise.all([
+  const [trainer, plans, openLog, waterGoal, waterToday, mealPlans, workoutDates, questionnaire, upcoming] = await Promise.all([
     getTrainer(user.workspace.id),
     getStudentPlans(user.id),
     getOpenLog(user.id),
@@ -231,6 +261,7 @@ export async function StudentHome({ user }: { user: CurrentUser }) {
     getStudentMealPlans(user.id),
     getCompletedWorkoutDates(user.id),
     getLatestQuestionnaire(user.id),
+    listUpcomingForStudent(user.id, 1),
   ]);
 
   const today = weekdayToday();
@@ -312,6 +343,8 @@ export async function StudentHome({ user }: { user: CurrentUser }) {
           </ul>
         )}
       </section>
+
+      {upcoming[0] && <NextSession appointment={upcoming[0]} today={todayIso} />}
 
       {!questionnaire && (
         <Link

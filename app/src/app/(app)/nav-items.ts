@@ -1,7 +1,7 @@
 import type { WorkspaceRole } from "@/lib/supabase/database.types";
 
 export type NavKey =
-  | "dashboard" | "students" | "workouts" | "exercises" | "nutrition" | "foods"
+  | "dashboard" | "students" | "schedule" | "workouts" | "exercises" | "nutrition" | "foods"
   | "assessments" | "training" | "meals" | "hydration" | "progress" | "anamnese" | "assistant" | "settings";
 
 export type NavItem = {
@@ -9,8 +9,8 @@ export type NavItem = {
   href: string;
   label: string;
   roles: WorkspaceRole[];
-  /** Shown in the mobile tab bar (max five per role); the sidebar shows everything. */
-  mobile: boolean;
+  /** Shown in the mobile tab bar (max five per role), for every role or only some; the sidebar shows everything. */
+  mobile: boolean | WorkspaceRole[];
 };
 
 const ALL: WorkspaceRole[] = ["owner", "trainer", "student"];
@@ -21,6 +21,7 @@ const STUDENT: WorkspaceRole[] = ["student"];
 export const NAV_ITEMS: NavItem[] = [
   { key: "dashboard", href: "/dashboard", label: "Painel", roles: ALL, mobile: true },
   { key: "students", href: "/students", label: "Alunos", roles: STAFF, mobile: true },
+  { key: "schedule", href: "/schedule", label: "Agenda", roles: STAFF, mobile: true },
   { key: "workouts", href: "/workouts", label: "Treinos", roles: STAFF, mobile: true },
   { key: "exercises", href: "/exercises", label: "Exercícios", roles: STAFF, mobile: false },
   { key: "nutrition", href: "/nutrition", label: "Nutrição", roles: STAFF, mobile: true },
@@ -36,13 +37,14 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "anamnese", href: "/anamnese", label: "Anamnese", roles: STUDENT, mobile: false },
   // On mobile, reached from the header button.
   { key: "assistant", href: "/assistant", label: "Assistente", roles: ALL, mobile: false },
-  { key: "settings", href: "/settings", label: "Configurações", roles: ALL, mobile: true },
+  // Staff reach settings from the account menu on mobile, so Agenda gets the tab.
+  { key: "settings", href: "/settings", label: "Configurações", roles: ALL, mobile: STUDENT },
 ];
 
 export function navItemsFor(role: WorkspaceRole | undefined, variant: "sidebar" | "bottom" = "sidebar"): NavItem[] {
   // Users without a workspace (e.g. a student removed by their trainer) only
   // get the areas every role shares.
   return NAV_ITEMS.filter(
-    (item) => (role ? item.roles.includes(role) : item.roles === ALL) && (variant === "sidebar" || item.mobile),
+    (item) => (role ? item.roles.includes(role) : item.roles === ALL) && (variant === "sidebar" || item.mobile === true || (Array.isArray(item.mobile) && (!role || item.mobile.includes(role)))),
   );
 }

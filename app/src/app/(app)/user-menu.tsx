@@ -16,9 +16,9 @@ import {
 import { UserAvatar } from "@/components/user-avatar";
 import { logout } from "../(auth)/actions";
 
-type UserMenuProps = { fullName: string; email: string; avatarUrl: string | null; compact?: boolean };
+type UserMenuProps = { fullName: string; email: string; avatarUrl: string | null; compact?: boolean; side?: "top" | "bottom" };
 
-export function UserMenu({ fullName, email, avatarUrl, compact = false }: UserMenuProps) {
+export function UserMenu({ fullName, email, avatarUrl, compact = false, side }: UserMenuProps) {
   const logoutForm = useRef<HTMLFormElement>(null);
 
   return (
@@ -46,7 +46,7 @@ export function UserMenu({ fullName, email, avatarUrl, compact = false }: UserMe
             </>
           )}
         </DropdownMenuTrigger>
-        <DropdownMenuContent align={compact ? "end" : "start"} side={compact ? "bottom" : "top"} className="w-60">
+        <DropdownMenuContent align={compact && side !== "top" ? "end" : "start"} side={side ?? (compact ? "bottom" : "top")} className="w-60">
           <DropdownMenuGroup>
             <DropdownMenuLabel className="grid gap-0.5">
               <span className="truncate text-sm font-medium text-foreground">{fullName}</span>

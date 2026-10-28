@@ -21,3 +21,4 @@ export type PhotoPose = Enums<"photo_pose">;
 export type ExerciseKind = Enums<"exercise_kind">;
 export type CardioMode = Enums<"cardio_mode">;
 export type CardioIntensity = Enums<"cardio_intensity">;
+export type AppointmentStatus = Enums<"appointment_status">;

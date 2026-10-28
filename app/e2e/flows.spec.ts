@@ -260,7 +260,7 @@ test("@supabase trainer builds a meal plan and the student sees estimates", asyn
   }
 
   await page.goto("/nutrition/new");
-  await page.getByLabel("Aluno").selectOption({ label: student.name });
+  await page.getByLabel("Aluno", { exact: true }).selectOption({ label: student.name });
   await page.getByLabel("Nome do plano").fill("Plano de novembro");
   await page.getByRole("button", { name: "Criar e montar refeições" }).click();
   await expect(page).toHaveURL(/\/nutrition\/[0-9a-f-]{36}$/);
@@ -730,7 +730,7 @@ test("@supabase signed-in screens pass automated accessibility checks", async ({
   // Fifteen screens, each fully analysed.
   test.setTimeout(180_000);
   await login(page, trainer.email, trainer.password);
-  for (const path of ["/dashboard", "/students", "/workouts", planUrl, "/exercises", "/assessments", "/foods/taco", "/settings"]) {
+  for (const path of ["/dashboard", "/schedule", "/students", "/workouts", planUrl, "/exercises", "/assessments", "/foods/taco", "/settings"]) {
     await expectAccessible(page, path);
   }
   const studentPage = await newPage(browser, "mobile");
@@ -782,6 +782,74 @@ test("@supabase the assistant is reachable from the menu", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Assistente", level: 1 })).toBeVisible();
   // Test runs have no Anthropic key: the page says so instead of failing.
   if (!process.env.ANTHROPIC_API_KEY) await expect(page.getByText("Assistente ainda não ativado")).toBeVisible();
+});
+
+test("@supabase dashboard metrics, global search and the collapsible menu", async ({ page }) => {
+  await login(page, trainer.email, trainer.password);
+  await expect(page.getByRole("heading", { name: "Últimos 30 dias" })).toBeVisible();
+  // Real figures: the student trained during the journeys.
+  await expect(page.getByText("1 de 1 alunos ativos treinaram").filter({ visible: true })).toBeVisible();
+  await page.getByRole("navigation", { name: "Período das métricas" }).getByRole("link", { name: "7 dias" }).click();
+  await expect(page).toHaveURL(/periodo=7$/);
+  await expect(page.getByRole("heading", { name: "Últimos 7 dias" })).toBeVisible();
+
+  await page.getByRole("searchbox", { name: "Buscar aluno" }).fill("Carla");
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/students\?q=Carla$/);
+  await expect(page.getByRole("link", { name: student.name }).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Recolher menu" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-sidebar", "collapsed");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-sidebar", "collapsed");
+  // Labels stay available to assistive tech while collapsed.
+  await expect(page.getByRole("link", { name: "Agenda" }).first()).toBeVisible();
+  await page.getByRole("button", { name: "Expandir menu" }).click();
+  await expect(page.locator("html")).not.toHaveAttribute("data-sidebar", "collapsed");
+});
+
+test("@supabase trainer books a session, conflicts are refused and the student sees it", async ({ browser, page }) => {
+  const tomorrow = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(Date.now() + 86_400_000));
+  await login(page, trainer.email, trainer.password);
+  await page.getByRole("link", { name: "Agenda" }).first().click();
+  await expect(page.getByRole("heading", { name: "Agenda", level: 1 })).toBeVisible();
+
+  async function bookAt(time: string) {
+    await page.getByRole("button", { name: "Nova sessão" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Aluno", { exact: true }).selectOption({ label: student.name });
+    await dialog.getByLabel("Data").fill(tomorrow);
+    await dialog.getByLabel("Início").fill(time);
+    await dialog.getByLabel("Duração").selectOption("60");
+    await dialog.getByLabel("Local (opcional)").fill("Academia Central");
+    await dialog.getByRole("button", { name: "Agendar sessão" }).click();
+    return dialog;
+  }
+
+  await bookAt("07:30");
+  await expect(page.getByText("Sessão agendada.").filter({ visible: true })).toBeVisible();
+  await page.goto(`/schedule?semana=${tomorrow}`);
+  await expect(page.getByRole("button", { name: `07:30 às 08:30, ${student.name}, Agendada` })).toBeVisible();
+
+  const dialog = await bookAt("08:00");
+  await expect(dialog.getByText(/Você já tem uma sessão nesse horário/)).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  const studentPage = await newPage(browser, "mobile");
+  await login(studentPage, student.email, student.password);
+  const next = studentPage.getByRole("region", { name: "Próxima sessão com seu personal" });
+  await expect(next.getByText(/Amanhã · 07:30–08:30/)).toBeVisible();
+  await expect(next.getByText("Academia Central")).toBeVisible();
+
+  await page.getByRole("button", { name: `07:30 às 08:30, ${student.name}, Agendada` }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Cancelar sessão" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Cancelar sessão" }).click();
+  await expect(page.getByText("Sessão cancelada.").filter({ visible: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: `07:30 às 08:30, ${student.name}, Cancelada` })).toBeVisible();
+
+  await studentPage.reload();
+  await expect(studentPage.getByRole("region", { name: "Próxima sessão com seu personal" })).toHaveCount(0);
+  await studentPage.context().close();
 });
 
 test("@supabase students reach their trainer on WhatsApp", async ({ browser, page }) => {

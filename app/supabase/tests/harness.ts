@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
+import { btree_gist } from "@electric-sql/pglite/contrib/btree_gist";
 
 // In-process Postgres with the real migrations and a minimal stand-in for the
 // Supabase auth and storage schemas and API roles. Verifies policies, grants and functions;
@@ -8,11 +9,15 @@ import { PGlite } from "@electric-sql/pglite";
 
 const MIGRATIONS_DIR = join(__dirname, "..", "migrations");
 
+/** Extensions the migrations create (PGlite only ships them on request). */
+export const PGLITE_OPTIONS = { extensions: { btree_gist } };
+
 export const SUPABASE_STUB = `
   create role anon nologin;
   create role authenticated nologin;
   create role service_role nologin bypassrls;
   grant usage on schema public to anon, authenticated, service_role;
+  create schema if not exists extensions;
 
   create schema auth;
   grant usage on schema auth to anon, authenticated;
@@ -55,7 +60,7 @@ export type TestDb = {
 };
 
 export async function createTestDb(): Promise<TestDb> {
-  const db = new PGlite();
+  const db = new PGlite(PGLITE_OPTIONS);
   await db.exec(SUPABASE_STUB);
   for (const file of readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql")).sort()) {
     await db.exec(readFileSync(join(MIGRATIONS_DIR, file), "utf8"));

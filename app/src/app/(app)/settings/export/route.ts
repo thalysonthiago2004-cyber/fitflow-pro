@@ -21,7 +21,7 @@ export async function GET() {
 
   let data: Record<string, unknown>;
   if (user.role === "student") {
-    const [student, measurements, photos, logs, water, goals, questionnaires, comments] = await Promise.all([
+    const [student, measurements, photos, logs, water, goals, questionnaires, comments, appointments] = await Promise.all([
       supabase.from("students").select("goal, experience_level, sex, birth_date, height_cm, limitations, joined_at").eq("user_id", user.id),
       supabase.from("body_measurements").select("*").eq("student_id", user.id).order("measured_on"),
       supabase.from("progress_photos").select("taken_on, pose, storage_path, created_at").eq("student_id", user.id),
@@ -30,6 +30,7 @@ export async function GET() {
       supabase.from("hydration_goals").select("*").eq("student_id", user.id),
       supabase.from("health_questionnaires").select("*").eq("student_id", user.id),
       supabase.from("workout_comments").select("log_id, body, created_at").eq("author_id", user.id),
+      supabase.from("appointments").select("starts_at, ends_at, status, location, notes").eq("student_id", user.id).order("starts_at"),
     ]);
     data = {
       ...common,
@@ -41,17 +42,27 @@ export async function GET() {
       hydrationGoals: own(goals),
       healthQuestionnaires: own(questionnaires),
       comments: own(comments),
+      appointments: own(appointments),
     };
   } else {
     const workspaceId = user.workspace?.id ?? "";
-    const [students, plans, exercises, customizations, foods] = await Promise.all([
+    const [students, plans, exercises, customizations, foods, appointments] = await Promise.all([
       supabase.from("students").select("user_id, email, status, goal, joined_at").eq("workspace_id", workspaceId),
       supabase.from("workout_plans").select("name, status, starts_on, ends_on, workout_sessions(name, weekdays, session_exercises(*))").eq("workspace_id", workspaceId),
       supabase.from("exercises").select("*").eq("workspace_id", workspaceId),
       supabase.from("exercise_customizations").select("*").eq("workspace_id", workspaceId),
       supabase.from("foods").select("*").eq("workspace_id", workspaceId),
+      supabase.from("appointments").select("student_id, starts_at, ends_at, status, location, notes").eq("trainer_id", user.id).order("starts_at"),
     ]);
-    data = { ...common, students: own(students), workoutPlans: own(plans), exercises: own(exercises), exerciseCustomizations: own(customizations), foods: own(foods) };
+    data = {
+      ...common,
+      students: own(students),
+      workoutPlans: own(plans),
+      exercises: own(exercises),
+      exerciseCustomizations: own(customizations),
+      foods: own(foods),
+      appointments: own(appointments),
+    };
   }
 
   return new Response(JSON.stringify(data, null, 2), {

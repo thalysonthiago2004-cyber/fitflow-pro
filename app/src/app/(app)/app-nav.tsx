@@ -1,6 +1,6 @@
 "use client";
 
-import { Apple, ClipboardList, Droplets, Dumbbell, HeartPulse, Scale, Sparkles, TrendingUp, Utensils, LayoutDashboard, Settings, Users, type LucideIcon } from "lucide-react";
+import { Apple, CalendarDays, ClipboardList, Droplets, Dumbbell, HeartPulse, Scale, Sparkles, TrendingUp, Utensils, LayoutDashboard, Settings, Users, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { WorkspaceRole } from "@/lib/supabase/database.types";
@@ -11,6 +11,7 @@ import { type NavKey, navItemsFor } from "./nav-items";
 const ICONS: Record<NavKey, LucideIcon> = {
   dashboard: LayoutDashboard,
   students: Users,
+  schedule: CalendarDays,
   workouts: ClipboardList,
   exercises: Dumbbell,
   training: Dumbbell,
@@ -53,10 +54,11 @@ export function AppNav({ variant, role }: AppNavProps) {
               href={href}
               aria-current={active ? "page" : undefined}
               aria-label={!isSidebar && SHORT_LABELS[key] ? label : undefined}
+              title={isSidebar ? label : undefined}
               className={cn(
                 "relative flex items-center font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
                 isSidebar
-                  ? "h-11 gap-3 rounded-xl px-3 text-sm text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-semibold aria-[current=page]:text-sidebar-foreground before:absolute before:top-2.5 before:bottom-2.5 before:left-0 before:w-1 before:rounded-full before:bg-brand before:opacity-0 aria-[current=page]:before:opacity-100"
+                  ? "h-11 gap-3 rounded-xl px-3 text-sm sidebar-collapsed:justify-center sidebar-collapsed:px-0 text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-semibold aria-[current=page]:text-sidebar-foreground before:absolute before:top-2.5 before:bottom-2.5 before:left-0 before:w-1 before:rounded-full before:bg-brand before:opacity-0 aria-[current=page]:before:opacity-100"
                   : "h-16 flex-col justify-center gap-1 rounded-xl text-[11px] text-muted-foreground aria-[current=page]:font-semibold aria-[current=page]:text-foreground dark:aria-[current=page]:text-brand before:absolute before:top-0 before:h-0.5 before:w-8 before:rounded-full before:bg-brand before:opacity-0 aria-[current=page]:before:opacity-100 dark:before:hidden",
               )}
             >
@@ -67,7 +69,7 @@ export function AppNav({ variant, role }: AppNavProps) {
                 )}
                 aria-hidden
               />
-              {isSidebar ? label : <span className="max-w-full truncate px-0.5">{SHORT_LABELS[key] ?? label}</span>}
+              {isSidebar ? <span className="truncate sidebar-collapsed:sr-only">{label}</span> : <span className="max-w-full truncate px-0.5">{SHORT_LABELS[key] ?? label}</span>}
             </Link>
           </li>
         );
